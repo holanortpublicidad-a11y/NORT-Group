@@ -5,7 +5,8 @@ import { buildOrderFromQuote, quoteFolio } from '../lib/orders.js';
 import { materialNeeds } from '../lib/pricing.js';
 import { isClosed } from '../lib/sla.js';
 import { clearState, loadState, saveState } from '../lib/storage.js';
-import { priceFromMargin } from '../data/inventory.js';
+import { DEFAULT_ITEMS, DEFAULT_RULES, priceFromMargin } from '../data/inventory.js';
+import { migrateF1Params } from '../lib/families/f1-anuncios3d.js';
 
 const AppCtx = createContext(null);
 
@@ -22,9 +23,41 @@ function freshData(clock) {
   };
 }
 
+const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
+/** Mezcla profunda: valores guardados ganan; llaves nuevas vienen de los valores por defecto. */
+function withDefaults(def, saved) {
+  if (!isObj(def) || !isObj(saved)) return saved === undefined ? def : saved;
+  const out = { ...def };
+  for (const k of Object.keys(saved)) out[k] = withDefaults(def[k], saved[k]);
+  return out;
+}
+
+/** Migra datos guardados por versiones anteriores de la app. */
+function migrate(saved) {
+  const rules = withDefaults(DEFAULT_RULES, saved.catalog?.rules ?? {});
+  const known = new Set((saved.catalog?.items ?? []).map((i) => i.id));
+  const items = (saved.catalog?.items ?? []).map((i) => (i.id === 'srv-grua' && /\(d[ií]a\)/i.test(i.name) ? DEFAULT_ITEMS.find((d) => d.id === 'srv-grua') : i));
+  for (const d of DEFAULT_ITEMS) if (!known.has(d.id)) items.push(d);
+  const quotes = (saved.quotes ?? []).map((q) => ({
+    ...q,
+    items: q.items.map((it) => ({
+      ...it,
+      params: it.family === 'f1' ? migrateF1Params(it.params, rules) : it.params,
+      install: it.install ? { equipment: 'andamio', bodies: null, days: 1, hours: null, ...it.install } : it.install,
+    })),
+  }));
+  const clients = (saved.clients ?? []).map((c) => ({
+    ...c,
+    type: c.type ?? 'cliente',
+    contact: { whatsapp: c.contact?.phone ?? '', ...c.contact },
+  }));
+  return { ...saved, catalog: { items, rules }, quotes, clients };
+}
+
 function init() {
   const clock = Date.now();
-  const saved = loadState();
+  const stored = loadState();
+  const saved = stored ? migrate(stored) : null;
   return {
     clock,
     offsetDays: 0, // simulador de reloj para probar la semaforización
@@ -78,6 +111,21 @@ function reducer(s, a) {
     // ── Clientes / usuarios ──
     case 'SAVE_CLIENT':
       return { ...s, clients: upsert(s.clients, a.client), toasts: toast(s, 'Cliente guardado') };
+    case 'NEW_PROSPECT': {
+      const c = { ...a.prospect, id: uid('c'), type: 'prospecto', createdAt: nowOf(s) };
+      return {
+        ...s,
+        clients: [...s.clients, c],
+        quotes: a.quoteId ? replace(s.quotes, a.quoteId, (q) => ({ ...q, clientId: c.id })) : s.quotes,
+        toasts: toast(s, `Prospecto ${c.tradeName} registrado`),
+      };
+    }
+    case 'SET_CLIENT_TYPE':
+      return {
+        ...s,
+        clients: replace(s.clients, a.id, (c) => ({ ...c, type: a.clientType })),
+        toasts: toast(s, a.clientType === 'cliente' ? 'Marcado como cliente activo' : 'Marcado como prospecto'),
+      };
     case 'SAVE_USER':
       return { ...s, users: upsert(s.users, a.user) };
 
@@ -164,9 +212,14 @@ function reducer(s, a) {
         movements: [...moves, ...s.movements].slice(0, 300),
         quotes: replace(s.quotes, q.id, (x) => ({ ...x, status: 'Aprobada', approvedAt: now, orderId: order.id })),
         orders: [order, ...s.orders],
+        // Conversión automática: el prospecto pasa a cliente al aprobar / generar OT
+        clients: replace(s.clients, q.clientId, (c) => (c.type === 'prospecto' ? { ...c, type: 'cliente', convertedAt: now } : c)),
         counters: { ...s.counters, order: s.counters.order + 1 },
         route: { name: 'orders', open: order.id },
-        toasts: toast(s, `Cotización aprobada · se generó ${order.id}`),
+        toasts: toast(
+          s,
+          client?.type === 'prospecto' ? `Cotización aprobada · ${order.id} · ${client.tradeName} ahora es cliente` : `Cotización aprobada · se generó ${order.id}`,
+        ),
       };
     }
 

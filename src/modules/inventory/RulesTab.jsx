@@ -132,9 +132,9 @@ export function FamilyRules({ editable }) {
           <R editable={editable} path={['f1', 'fill', 'letras']} step="0.05" label="Llenado letras 3D" hint="Área de letras ÷ (largo × altura)" />
           <R editable={editable} path={['f1', 'contourPerim']} step="0.05" label="Factor de perímetro contorno" />
           <R editable={editable} path={['f1', 'kPerimLetras']} step="0.1" label="Desarrollo por letra" hint="Perímetro de una letra ÷ su altura" />
-          <R editable={editable} path={['f1', 'ledPerM2']} unit="/m²" step="1" label="LED luz directa" />
-          <R editable={editable} path={['f1', 'ledPerMlHalo']} unit="/m.l." step="1" label="LED luz indirecta (halo)" />
-          <R editable={editable} path={['f1', 'psuSafety']} step="0.05" label="Holgura de fuentes" hint="1.2 = 20% de potencia extra" />
+          <R editable={editable} path={['f1', 'ledPerM2']} unit="/m²" step="1" label="Referencia LED luz directa" hint="Solo para sugerir; la cantidad se captura" />
+          <R editable={editable} path={['f1', 'ledPerMlHalo']} unit="/m.l." step="1" label="Referencia LED halo" />
+          <R editable={editable} path={['f1', 'ledWatts']} unit="W" step="0.1" label="Consumo por módulo LED" hint="Fuentes: W = módulos × este valor" />
           <R editable={editable} path={['f1', 'rotCoverage']} unit="%" label="Cobertura de rotulación sugerida" />
         </div>
       </Block>
@@ -208,21 +208,12 @@ export function InstallRules({ editable }) {
         />
       </Block>
       <div className="flex flex-col gap-4">
-        <Block title="Recargo por altura de trabajo">
-          <RuleList
-            path={['install', 'heightBands']}
-            editable={editable}
-            cols={[
-              { key: 'upTo', label: 'Hasta', unit: 'm' },
-              { key: 'label', label: 'Equipo', type: 'text' },
-              { key: 'pct', label: 'Recargo', unit: '%' },
-            ]}
-          />
-        </Block>
-        <Block title="Mínimos">
+        <Block title="Altura y equipo en campo" desc="Tarifas de andamio y grúa boom: en Inventario → Servicios/Mano de Obra">
           <div className="grid grid-cols-2 gap-3">
+            <R editable={editable} path={['install', 'ladderUpTo']} unit="m" step="0.5" label="Escalera incluida hasta" />
             <R editable={editable} path={['install', 'minM2']} unit="m²" step="0.5" label="Instalación mínima" />
-            <R editable={editable} path={['install', 'craneFrom']} unit="m" step="0.5" label="Grúa a partir de" hint="Agrega “Renta de grúa”" />
+            <R editable={editable} path={['install', 'scaffoldBodyM']} unit="m" step="0.5" label="Altura por cuerpo de andamio" />
+            <R editable={editable} path={['install', 'craneMinHours']} unit="h" step="0.5" label="Mínimo de horas de grúa" />
           </div>
         </Block>
       </div>

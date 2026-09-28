@@ -9,4 +9,4 @@ import f7 from './f7-servicio.js';
 /** Registro de familias de producto. Para agregar una familia: crea fN-*.js y regístrala aquí. */
 export const FAMILY_LIST = [f1, f2, f3, f4, f5, f6, f7];
 export const FAMILIES = Object.fromEntries(FAMILY_LIST.map((f) => [f.id, f]));
-export { makeCtx, installRows, heightBand } from './common.js';
+export { makeCtx, installRows, installPlan, INSTALL_EQUIPMENT } from './common.js';

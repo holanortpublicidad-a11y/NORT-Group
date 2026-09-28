@@ -20,6 +20,7 @@ export function buildOrderFromQuote({ quote, client, catalog, seq, now, byUserId
       summary: c.summary,
       label: item.label,
       specs: c.specs,
+      images: c.images,
       bom: c.rows.map((r) => ({ itemId: r.itemId, name: r.name, unit: r.unit, qty: r.qty, role: r.role, note: r.note, cost: r.cost })),
       install: item.install?.enabled && c.family?.supportsInstall ? { ...item.install } : null,
       notes: item.notes,

@@ -1,6 +1,7 @@
 import { DAY } from '../lib/format.js';
 import { newLineItem } from '../lib/pricing.js';
 import { DEFAULT_ITEMS, DEFAULT_RULES } from './inventory.js';
+import { migrateF1Params, newElement } from '../lib/families/f1-anuncios3d.js';
 import { buildOrderFromQuote, quoteFolio } from '../lib/orders.js';
 import { PHASES } from '../lib/sla.js';
 
@@ -24,48 +25,73 @@ export const TEAMS = ['Herrería', 'Acrílicos y router CNC', 'Impresión digita
 export const CLIENTS = [
   {
     id: 'c-fdvn',
+    type: 'cliente',
     legalName: 'Farmacias Del Valle Norte S.A. de C.V.',
     tradeName: 'Farmacias Del Valle',
     rfc: 'FVN190312AB4',
-    contact: { name: 'Lic. Sandra Pérez', phone: '656 214 3380', email: 'compras@delvallenorte.mx' },
+    contact: { name: 'Lic. Sandra Pérez', phone: '656 214 3380', whatsapp: '656 214 3380', email: 'compras@delvallenorte.mx' },
     fiscalAddress: 'Av. de las Torres 2210, Col. Galeana, Cd. Juárez, Chih. C.P. 32575',
     installAddress: 'Blvd. Zaragoza 7780, Suc. 14, Cd. Juárez, Chih.',
   },
   {
     id: 'c-paso',
+    type: 'cliente',
     legalName: 'Grupo Restaurantero Paso Real S. de R.L. de C.V.',
     tradeName: 'Paso Real Cocina Norteña',
     rfc: 'GRP170804H21',
-    contact: { name: 'Arq. Fernando Loya', phone: '656 330 1212', email: 'fernando.loya@pasoreal.mx' },
+    contact: { name: 'Arq. Fernando Loya', phone: '656 330 1212', whatsapp: '656 330 1212', email: 'fernando.loya@pasoreal.mx' },
     fiscalAddress: 'Av. Gómez Morín 9100, Col. Partido Senecú, Cd. Juárez, Chih. C.P. 32459',
     installAddress: 'Av. Gómez Morín 9100, fachada norte, Cd. Juárez, Chih.',
   },
   {
     id: 'c-sonrisa',
+    type: 'cliente',
     legalName: 'Clínica Dental Sonrisa Juárez S.C.',
     tradeName: 'Sonrisa Juárez',
     rfc: 'CDS200115QW9',
-    contact: { name: 'Dra. Paola Núñez', phone: '656 611 4040', email: 'contacto@sonrisajuarez.mx' },
+    contact: { name: 'Dra. Paola Núñez', phone: '656 611 4040', whatsapp: '656 611 4040', email: 'contacto@sonrisajuarez.mx' },
     fiscalAddress: 'Calle Paseo Triunfo de la República 3530, Cd. Juárez, Chih. C.P. 32330',
     installAddress: 'Paseo Triunfo de la República 3530, local 5, Cd. Juárez, Chih.',
   },
   {
     id: 'c-lofi',
+    type: 'cliente',
     legalName: 'Logística Fronteriza Integral S.A. de C.V.',
     tradeName: 'LOFI',
     rfc: 'LFI150923KP3',
-    contact: { name: 'Ing. Héctor Robles', phone: '656 789 2201', email: 'hrobles@lofi.com.mx' },
+    contact: { name: 'Ing. Héctor Robles', phone: '656 789 2201', whatsapp: '656 789 2201', email: 'hrobles@lofi.com.mx' },
     fiscalAddress: 'Parque Industrial Omega, Nave 7, Cd. Juárez, Chih. C.P. 32575',
     installAddress: 'Parque Industrial Omega, Nave 7, acceso principal, Cd. Juárez, Chih.',
   },
   {
     id: 'c-medanos',
+    type: 'cliente',
     legalName: 'Ana Lucía Terrazas Olivas',
     tradeName: 'Café Médanos',
     rfc: 'TEOA880412MN5',
-    contact: { name: 'Ana Lucía Terrazas', phone: '656 402 7788', email: 'hola@cafemedanos.mx' },
+    contact: { name: 'Ana Lucía Terrazas', phone: '656 402 7788', whatsapp: '656 402 7788', email: 'hola@cafemedanos.mx' },
     fiscalAddress: 'Calle Ignacio Mejía 214, Centro, Cd. Juárez, Chih. C.P. 32000',
     installAddress: 'Calle Ignacio Mejía 214, Centro, Cd. Juárez, Chih.',
+  },
+  {
+    id: 'c-pollo',
+    type: 'prospecto',
+    legalName: 'Pollo Sinaloa Las Torres',
+    tradeName: 'Pollo Sinaloa',
+    rfc: '',
+    contact: { name: 'Ramón Quiñónez', phone: '656 120 4455', whatsapp: '656 120 4455', email: 'pollosinaloa.torres@gmail.com' },
+    fiscalAddress: '',
+    installAddress: 'Av. de las Torres 1880, Cd. Juárez, Chih.',
+  },
+  {
+    id: 'c-titan',
+    type: 'prospecto',
+    legalName: 'Gimnasio Titán',
+    tradeName: 'Gimnasio Titán',
+    rfc: '',
+    contact: { name: 'Karen Holguín', phone: '656 377 9012', whatsapp: '656 377 9012', email: 'karen@titangym.mx' },
+    fiscalAddress: '',
+    installAddress: 'Blvd. Tomás Fernández 7420, Cd. Juárez, Chih.',
   },
 ];
 
@@ -75,10 +101,11 @@ export const CATALOG = { items: DEFAULT_ITEMS, rules: DEFAULT_RULES };
 // ── Semilla: cotizaciones y OTs de ejemplo, relativas a "ahora" ─────────────
 function line(family, params = {}, extra = {}) {
   const base = newLineItem(family, CATALOG);
+  const merged = family === 'f1' && params.modality ? migrateF1Params({ ...params }, CATALOG.rules) : { ...base.params, ...params };
   return {
     ...base,
     ...extra,
-    params: { ...base.params, ...params },
+    params: merged,
     install: { ...base.install, ...(extra.install || {}) },
   };
 }
@@ -150,6 +177,23 @@ export function seed(now) {
       ],
     },
     {
+      n: 142, clientId: 'c-pollo', sellerId: 'u-jorge', title: 'Anuncio luminoso fachada', ago: 0.3, lead: 12, status: 'Borrador',
+      items: [
+        line('f1', {
+          baseId: 'rig-acm3',
+          elements: [
+            newElement({ name: 'Letras “POLLO SINALOA”', modality: 'letras', light: 'directa', text: 'POLLO SINALOA', letterCount: 12, width: 3.8, height: 0.45, cantoSize: '4', cantoColor: 'Rojo', frenteMat: 'acrilico', frenteColor: 'Blanco lechoso', silvatrim: true, silvatrimColor: 'Rojo', rotId: 'vin-corte-tras', rotCoverage: 100 }),
+            newElement({ name: 'Icono pollo a contorno', modality: 'caja_contorno', light: 'directa', width: 1.1, height: 1.1, cantoSize: '4', cantoColor: 'Amarillo', frenteMat: 'acrilico', frenteColor: 'Traslúcido impreso', silvatrim: true, silvatrimColor: 'Amarillo', rotId: 'vin-impreso', rotCoverage: 100 }),
+          ],
+          ledId: 'led-3',
+          ledQty: 120,
+          cnc: true,
+          kit: true,
+          labor: true,
+        }, { label: 'Fachada principal', install: { surfaceId: 'block', heightM: 7.5, equipment: 'grua', hours: 4 } }),
+      ],
+    },
+    {
       n: 141, clientId: 'c-lofi', sellerId: 'u-mariana', title: 'Flotilla pick-up', ago: 1, lead: 6, status: 'Enviada',
       items: [line('f4', { mode: 'vehicular', vtype: 'parcial', vehicleId: 'pickup', vinylId: 'vin-impreso', laminate: true, qty: 3 })],
     },
@@ -202,5 +246,5 @@ export function seed(now) {
     };
   });
 
-  return { quotes, orders, nextQuote: 142, nextOrder: orders.length + 1 };
+  return { quotes, orders, nextQuote: 143, nextOrder: orders.length + 1 };
 }

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Car, ChevronDown, Copy, Frame, Lightbulb, Plus, Printer, Shirt, Signpost, Trash2, Wrench } from 'lucide-react';
-import { Card, Check, Field, IconButton, Input, Modal, NumberInput, Select, Textarea, cx } from '../../components/ui.jsx';
+import { Card, Check, Field, IconButton, Input, Modal, NumberInput, Segmented, Select, Textarea, cx } from '../../components/ui.jsx';
 import { BomTable, MarginBadge } from '../../components/inventory-ui.jsx';
-import { FAMILY_LIST, heightBand } from '../../lib/families/index.js';
+import { FAMILY_LIST, INSTALL_EQUIPMENT, installPlan } from '../../lib/families/index.js';
 import { calcLine } from '../../lib/pricing.js';
 import { mxn } from '../../lib/format.js';
 import { FAMILY_FORMS } from './families/index.js';
@@ -57,7 +57,7 @@ export default function FamilyLineEditor({ index, item, catalog, onChange, onRem
   const setI = (patch) => onChange({ ...item, install: { ...item.install, ...patch } });
   const fid = (k) => `${item.id}-${k}`;
   const R = catalog.rules;
-  const band = heightBand(R, item.install?.heightM);
+  const plan = installPlan(R, item.install);
   const params = R.params;
 
   return (
@@ -113,10 +113,35 @@ export default function FamilyLineEditor({ index, item, catalog, onChange, onRem
                     <Field
                       label="Altura de instalación"
                       htmlFor={fid('ih')}
-                      hint={`${band.label}${band.pct ? ` · +${band.pct}%` : ''}${Number(item.install.heightM) >= R.install.craneFrom ? ' · incluye renta de grúa' : ''}`}
+                      hint={plan.ladder ? `Hasta ${R.install.ladderUpTo} m: escalera, incluida en la tarifa` : `Más de ${R.install.ladderUpTo} m: elige el equipo`}
                     >
                       <NumberInput id={fid('ih')} unit="m" step="0.1" value={item.install.heightM} onChange={(v) => setI({ heightM: v })} />
                     </Field>
+                    {!plan.ladder && (
+                      <div className="flex flex-col gap-3 rounded-md border border-warn/40 bg-warn/5 p-3 sm:col-span-2">
+                        <Field label="Equipo en campo" htmlFor={fid('eq')}>
+                          <div className="scroll-x no-scrollbar">
+                            <Segmented options={INSTALL_EQUIPMENT.map((e) => ({ value: e.id, label: e.name }))} value={plan.equipment} onChange={(v) => setI({ equipment: v })} />
+                          </div>
+                        </Field>
+                        {plan.equipment === 'andamio' ? (
+                          <div className="grid grid-cols-2 gap-3 sm:max-w-sm">
+                            <Field label="Cuerpos de andamio" htmlFor={fid('bodies')} hint={`Sugerido: ${plan.autoBodies} (${R.install.scaffoldBodyM} m c/u)`}>
+                              <NumberInput id={fid('bodies')} step="1" min={1} value={item.install.bodies ?? plan.autoBodies} onChange={(v) => setI({ bodies: v === '' ? null : v })} />
+                            </Field>
+                            <Field label="Días de renta" htmlFor={fid('days')}>
+                              <NumberInput id={fid('days')} unit="días" step="1" min={1} value={item.install.days ?? 1} onChange={(v) => setI({ days: v })} />
+                            </Field>
+                          </div>
+                        ) : (
+                          <div className="sm:max-w-[200px]">
+                            <Field label="Horas de maniobra" htmlFor={fid('hours')} hint={`Mínimo ${R.install.craneMinHours} h`}>
+                              <NumberInput id={fid('hours')} unit="h" step="0.5" value={item.install.hours ?? R.install.craneMinHours} onChange={(v) => setI({ hours: v })} />
+                            </Field>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </section>

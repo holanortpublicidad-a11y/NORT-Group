@@ -38,6 +38,7 @@ const R = [
   ['rig-foam', 'Foam board 5 mm', 'Rígidos', 'm2', 150, 360, 4.5, 3],
   ['rig-galva', 'Lámina galvanizada cal. 24', 'Rígidos', 'm2', 190, 420, 14.6, 6],
   ['rig-alu', 'Aluminio natural 1 mm', 'Rígidos', 'm2', 540, 1150, 2.9, 3],
+  ['rig-chapa', 'Chapa rígida (lámina negra cal. 20)', 'Rígidos', 'm2', 230, 520, 8, 4],
   // Viniles (m²)
   ['vin-corte', 'Vinil de corte estándar', 'Viniles', 'm2', 95, 320, 45, 15],
   ['vin-corte-tras', 'Vinil de corte traslúcido', 'Viniles', 'm2', 180, 480, 12, 8],
@@ -50,8 +51,9 @@ const R = [
   ['lona-back', 'Lona backlit', 'Lonas', 'm2', 95, 290, 40, 20],
   ['lona-mesh', 'Lona mesh', 'Lonas', 'm2', 70, 230, 35, 20],
   // Perfiles y canales (m.l.) + herrajes
+  ['per-canto2', 'Canto de aluminio 2"', 'Perfiles y Canales', 'ml', 95, 230, 45, 20],
   ['per-canto4', 'Canto de aluminio 4"', 'Perfiles y Canales', 'ml', 145, 340, 60, 30],
-  ['per-silva', 'Silvatrim 1"', 'Perfiles y Canales', 'ml', 38, 95, 90, 40],
+  ['per-silva', 'Silvatrim / cercha 1"', 'Perfiles y Canales', 'ml', 38, 95, 90, 40],
   ['per-ptr', 'Perfil tubular de fierro 1" × 1" (bastidores)', 'Perfiles y Canales', 'ml', 42, 110, 120, 60],
   ['her-perno', 'Perno separador acero inoxidable', 'Perfiles y Canales', 'pza', 38, 95, 140, 40],
   ['her-cinta', 'Cinta doble cara industrial', 'Perfiles y Canales', 'ml', 14, 40, 150, 50],
@@ -64,6 +66,7 @@ const R = [
   ['psu-100', 'Fuente de poder 12 V 100 W', 'Iluminación', 'pza', 330, 680, 12, 4, { watts: 100, psu: true }],
   ['psu-150', 'Fuente de poder 12 V 150 W', 'Iluminación', 'pza', 420, 850, 6, 3, { watts: 150, psu: true }],
   ['psu-200', 'Fuente de poder 12 V 200 W', 'Iluminación', 'pza', 520, 1050, 5, 3, { watts: 200, psu: true }],
+  ['psu-250', 'Fuente de poder 12 V 250 W', 'Iluminación', 'pza', 610, 1250, 3, 2, { watts: 250, psu: true }],
   ['psu-300', 'Fuente de poder 12 V 300 W', 'Iluminación', 'pza', 720, 1450, 2, 2, { watts: 300, psu: true }],
   // Vehicular
   ['veh-lamuv', 'Laminado de protección UV automotriz', 'Vehicular', 'm2', 160, 380, 30, 10],
@@ -79,7 +82,8 @@ const R = [
   ['srv-cnc', 'Corte CNC router', 'Servicios/Mano de Obra', 'ml', 18, 45, null, null],
   ['srv-stickers', 'Impresión de stickers en planilla', 'Servicios/Mano de Obra', 'm2', 150, 420, null, null],
   ['srv-suaje', 'Suaje / corte de stickers', 'Servicios/Mano de Obra', 'm2', 40, 120, null, null],
-  ['srv-grua', 'Renta de grúa (día)', 'Servicios/Mano de Obra', 'tarifa', 1800, 3200, null, null],
+  ['srv-grua', 'Grúa tipo boom (por hora de maniobra)', 'Servicios/Mano de Obra', 'tarifa', 650, 1200, null, null],
+  ['srv-andamio', 'Andamio: renta y armado (por cuerpo / día)', 'Servicios/Mano de Obra', 'pza', 150, 350, null, null],
   ['srv-inst', 'Instalación en pared / altura', 'Servicios/Mano de Obra', 'm2', 110, 260, null, null],
   ['srv-armado', 'Mano de obra armado de anuncio', 'Servicios/Mano de Obra', 'm2', 350, 900, null, null],
   ['srv-lam', 'Laminado / plastificado mate o brillo', 'Servicios/Mano de Obra', 'm2', 45, 120, null, null],
@@ -113,10 +117,20 @@ export const DEFAULT_RULES = {
     fill: { rect: 1, contorno: 0.8, letras: 0.45 }, // área de cara ÷ (ancho × alto)
     contourPerim: 1.35, // perímetro de caja contorno ÷ perímetro rectangular
     kPerimLetras: 3.2, // desarrollo por letra ÷ altura de letra
-    ledPerM2: 50, // módulos por m² en luz directa
-    ledPerMlHalo: 8, // módulos por m.l. de canto en luz indirecta (halo)
-    psuSafety: 1.2, // holgura de potencia en fuentes
+    ledWatts: 1.2, // consumo por módulo para calcular fuentes: W = módulos × 1.2
+    ledPerM2: 50, // solo para sugerir cantidad de módulos (luz directa)
+    ledPerMlHalo: 8, // solo para sugerir cantidad de módulos (halo)
     rotCoverage: 60, // % de la cara que se rotula por defecto
+    cantoSizes: [
+      { id: '2', name: '2"', itemId: 'per-canto2' },
+      { id: '4', name: '4"', itemId: 'per-canto4' },
+    ],
+    frenteMaterials: [
+      { id: 'acrilico', name: 'Acrílico traslúcido lechoso', itemId: 'rig-acr-blanco' },
+      { id: 'acm', name: 'Aluminio compuesto (ACM)', itemId: 'rig-acm3' },
+      { id: 'aluminio', name: 'Aluminio natural', itemId: 'rig-alu' },
+      { id: 'chapa', name: 'Chapa rígida', itemId: 'rig-chapa' },
+    ],
   },
   f3: { crossEvery: 1.0, bleed: 0.1 }, // travesaño cada X m; sobrante por lado al tensar en bastidor
   f4: {
@@ -157,13 +171,13 @@ export const DEFAULT_RULES = {
       { id: 'vidrio', name: 'Vidrio / cristal', factor: 0.85 },
       { id: 'metal', name: 'Estructura metálica existente', factor: 1.1 },
     ],
-    heightBands: [
-      { upTo: 3, pct: 0, label: 'Escalera' },
-      { upTo: 6, pct: 15, label: 'Andamio' },
-      { upTo: 12, pct: 35, label: 'Canastilla / grúa' },
-      { upTo: 999, pct: 60, label: 'Grúa alta' },
-    ],
     minM2: 2,
-    craneFrom: 6, // a partir de esta altura se agrega renta de grúa
+    ladderUpTo: 6, // hasta esta altura: escalera, incluida en la tarifa de instalación
+    scaffoldBodyM: 2, // altura de cada cuerpo de andamio (para sugerir cuerpos)
+    craneMinHours: 3, // mínimo de horas por maniobra de grúa boom
   },
 };
+
+// Colores para canto, frente y silvatrim (anuncios luminosos)
+export const CANTO_COLORS = ['Negro', 'Rojo', 'Blanco', 'Aluminio natural', 'Azul', 'Amarillo', 'Dorado', 'Plata', 'Color especial'];
+export const FRENTE_COLORS = ['Blanco lechoso', 'Traslúcido impreso', 'Rojo', 'Azul', 'Negro', 'Color especial'];

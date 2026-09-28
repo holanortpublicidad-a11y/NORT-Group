@@ -16,7 +16,7 @@ export function newLineItem(familyId, catalog) {
     family: familyId,
     label: '',
     params: fam.defaults(catalog),
-    install: { enabled: !!fam.supportsInstall, surfaceId: 'block', heightM: 3 },
+    install: { enabled: !!fam.supportsInstall, surfaceId: 'block', heightM: 3, equipment: 'andamio', bodies: null, days: 1, hours: null },
     discountPct: 0,
     notes: '',
   };
@@ -42,6 +42,7 @@ export function calcLine(item, catalog) {
     specs: [...out.specs, inst.spec].filter(Boolean),
     m2: out.m2,
     summary: out.summary,
+    images: out.images || [],
     cost,
     price,
     discount,

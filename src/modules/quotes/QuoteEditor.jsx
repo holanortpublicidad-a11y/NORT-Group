@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { AlertTriangle, ArrowLeft, ArrowUpRight, CheckCircle2, Eye, Send, Wrench, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowUpRight, CheckCircle2, Eye, Send, UserPlus, Wrench, XCircle } from 'lucide-react';
+import ProspectForm from '../../components/ProspectForm.jsx';
 import { useApp } from '../../store/AppStore.jsx';
 import { Badge, Button, Card, Field, Input, Modal, NumberInput, QUOTE_TONE, Select, Textarea } from '../../components/ui.jsx';
 import FamilyLineEditor, { AddLineButton, FamilyGrid, FamilyPicker } from './FamilyLineEditor.jsx';
@@ -18,6 +19,7 @@ export default function QuoteEditor({ route }) {
   const [picker, setPicker] = useState(false);
   const [preview, setPreview] = useState(false);
   const [confirm, setConfirm] = useState(false);
+  const [prospect, setProspect] = useState(false);
 
   if (!quote) {
     return (
@@ -107,14 +109,31 @@ export default function QuoteEditor({ route }) {
           {/* Datos generales */}
           <Card className="p-4">
             <fieldset disabled={readOnly} className="grid-cols-1 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              <Field label="Cliente" htmlFor="q-client">
-                <Select id="q-client" value={quote.clientId} onChange={(e) => save({ clientId: e.target.value })}>
-                  {state.clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.tradeName} — {c.rfc}
-                    </option>
-                  ))}
-                </Select>
+              <Field label="Cliente o prospecto" htmlFor="q-client" className="sm:col-span-2">
+                <div className="flex gap-1.5">
+                  <Select id="q-client" value={quote.clientId} onChange={(e) => save({ clientId: e.target.value })} className="min-w-0 flex-1">
+                    {[
+                      ['Clientes', state.clients.filter((c) => c.type !== 'prospecto')],
+                      ['Prospectos', state.clients.filter((c) => c.type === 'prospecto')],
+                    ].map(([label, list]) =>
+                      list.length ? (
+                        <optgroup key={label} label={label}>
+                          {list.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.tradeName}
+                              {c.rfc ? ` — ${c.rfc}` : ''}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ) : null,
+                    )}
+                  </Select>
+                  {!readOnly && (
+                    <Button icon={UserPlus} onClick={() => setProspect(true)} title="Registrar un prospecto nuevo">
+                      <span className="hidden sm:inline">Nuevo prospecto</span>
+                    </Button>
+                  )}
+                </div>
               </Field>
               <Field label="Vendedor" htmlFor="q-seller">
                 <Select id="q-seller" value={quote.sellerId} onChange={(e) => save({ sellerId: e.target.value })}>
@@ -140,7 +159,13 @@ export default function QuoteEditor({ route }) {
             </fieldset>
             {client && (
               <p className="mt-3 border-t border-line pt-3 text-[12.5px] text-ink-3">
-                <span className="text-ink-2">{client.legalName}</span> · Instalación: {client.installAddress}
+                <Badge tone={client.type === 'prospecto' ? 'warn' : 'ok'} className="mr-2">
+                  {client.type === 'prospecto' ? 'Prospecto' : 'Cliente'}
+                </Badge>
+                <span className="text-ink-2">{client.legalName}</span>
+                {client.contact?.whatsapp && <> · WhatsApp {client.contact.whatsapp}</>}
+                {client.installAddress && <> · Instalación: {client.installAddress}</>}
+                {client.type === 'prospecto' && ' · pasará a cliente al aprobar'}
               </p>
             )}
           </Card>
@@ -274,6 +299,14 @@ export default function QuoteEditor({ route }) {
       <div className="mt-4 flex flex-wrap gap-2 md:hidden">{actions}</div>
 
       <FamilyPicker open={picker} onClose={() => setPicker(false)} onPick={addLine} />
+      <ProspectForm
+        open={prospect}
+        onClose={() => setProspect(false)}
+        onSave={(p) => {
+          dispatch({ type: 'NEW_PROSPECT', prospect: p, quoteId: quote.id });
+          setProspect(false);
+        }}
+      />
       <QuotePreview open={preview} onClose={() => setPreview(false)} quote={quote} />
 
       <Modal
@@ -309,6 +342,11 @@ export default function QuoteEditor({ route }) {
             La OT inicia en la fase <b className="text-ink">Ventas</b> hasta confirmar el anticipo de <b className="text-ink">{mxn(t.advance)}</b>.
           </li>
           <li>Se descuenta del inventario el material de insumos con stock controlado{shortages.length ? ` (${shortages.length} con faltante)` : ''}.</li>
+          {client?.type === 'prospecto' && (
+            <li>
+              <b className="text-ink">{client.tradeName}</b> pasará de prospecto a cliente.
+            </li>
+          )}
           <li>La cotización queda bloqueada para edición.</li>
         </ul>
       </Modal>

@@ -1,29 +1,14 @@
 import React, { useRef, useState } from 'react';
 import { FileText, Paperclip, Trash2, Upload } from 'lucide-react';
 import { IconButton, cx } from './ui.jsx';
-import { fmtDateTime, uid } from '../lib/format.js';
-
-// Los archivos se guardan dentro de localStorage (≈5 MB en total por navegador),
-// por eso solo se incrusta el contenido de archivos pequeños; de los grandes se guarda la referencia.
-const MAX_EMBED = 350 * 1024;
-const kb = (b) => (b > 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
-
-function readFile(file) {
-  return new Promise((resolve) => {
-    const base = { id: uid('f'), name: file.name, type: file.type, size: file.size, at: Date.now() };
-    if (file.size > MAX_EMBED) return resolve({ ...base, data: null });
-    const r = new FileReader();
-    r.onload = () => resolve({ ...base, data: r.result });
-    r.onerror = () => resolve({ ...base, data: null });
-    r.readAsDataURL(file);
-  });
-}
+import { fmtDateTime } from '../lib/format.js';
+import { kb, readFileForStorage } from '../lib/files.js';
 
 export default function Attachments({ files = [], onChange, readOnly, idPrefix = 'att' }) {
   const input = useRef(null);
   const [over, setOver] = useState(false);
   const add = async (list) => {
-    const read = await Promise.all([...list].map(readFile));
+    const read = await Promise.all([...list].map(readFileForStorage));
     onChange([...files, ...read]);
   };
   return (
@@ -48,7 +33,7 @@ export default function Attachments({ files = [], onChange, readOnly, idPrefix =
         >
           <Upload size={18} />
           <span className="font-medium">Adjuntar archivos de diseño</span>
-          <span className="text-[11.5px] text-ink-3">Arrastra o toca para elegir · PNG, JPG, PDF, AI, CDR · las vistas previas se guardan hasta 350 KB</span>
+          <span className="text-[11.5px] text-ink-3">Arrastra o toca para elegir · PNG, JPG, PDF, AI, CDR · las imágenes se guardan reducidas</span>
           <input
             ref={input}
             id={`${idPrefix}-input`}

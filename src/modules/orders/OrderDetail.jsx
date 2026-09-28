@@ -204,6 +204,16 @@ export default function OrderDetail({ id, onClose }) {
                   <div className="font-medium leading-tight">{l.label || l.summary}</div>
                 </div>
               </div>
+              {l.images?.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-2">
+                  {l.images.map((im, k) => (
+                    <figure key={k} className="w-[132px]">
+                      <img src={im.data} alt={im.name} className="h-24 w-full rounded-md border border-line bg-surface-2 object-contain" />
+                      <figcaption className="mt-0.5 truncate text-[11px] text-ink-3">{im.name}</figcaption>
+                    </figure>
+                  ))}
+                </div>
+              )}
               <dl className="divide-y divide-line text-[13px]">
                 {l.specs.map((sp) => (
                   <Spec key={sp.label} label={sp.label} value={sp.value} />

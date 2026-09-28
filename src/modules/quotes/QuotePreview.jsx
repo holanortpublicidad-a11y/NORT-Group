@@ -38,7 +38,7 @@ export default function QuotePreview({ open, onClose, quote }) {
   const seller = userById(quote.sellerId);
   const t = calcQuote(quote, catalog);
   const text = quoteAsText(quote, client, seller, catalog);
-  const phone = (client?.contact.phone || '').replace(/\D/g, '');
+  const phone = (client?.contact.whatsapp || client?.contact.phone || '').replace(/\D/g, '').slice(-10);
   const wa = `https://wa.me/52${phone}?text=${encodeURIComponent(text)}`;
 
   return (
@@ -91,7 +91,7 @@ export default function QuotePreview({ open, onClose, quote }) {
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#7a8292]">Cliente</div>
               <div className="font-semibold">{client?.legalName}</div>
-              <div>RFC {client?.rfc}</div>
+              {client?.rfc && <div>RFC {client.rfc}</div>}
               <div>
                 {client?.contact.name} · {client?.contact.phone}
               </div>
@@ -131,6 +131,16 @@ export default function QuotePreview({ open, onClose, quote }) {
                         <li key={l}>{l}</li>
                       ))}
                     </ul>
+                    {calc.images.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {calc.images.map((im, k) => (
+                          <figure key={k} className="w-[120px]">
+                            <img src={im.data} alt={im.name} className="h-20 w-full rounded border border-[#dde1e8] object-contain" />
+                            <figcaption className="mt-0.5 truncate text-[10px] text-[#7a8292]">{im.name}</figcaption>
+                          </figure>
+                        ))}
+                      </div>
+                    )}
                   </td>
                   <td className="py-2.5 text-right font-mono">{qtyOf(item)}</td>
                   <td className="py-2.5 text-right font-mono">{mxn(calc.total)}</td>
