@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Tokens de color (RGB sin coma para usar /alpha en Tailwind) ───────────── */
+:root {
+  --bg: 242 244 247;
+  --surface: 255 255 255;
+  --surface-2: 235 238 243;
+  --line: 218 223 231;
+  --ink: 20 25 35;
+  --ink-2: 72 81 97;
+  --ink-3: 118 127 144;
+  --accent: 40 78 214;
+  --accent-ink: 255 255 255;
+  --ok: 22 150 84;
+  --warn: 214 150 0;
+  --warn-ink: 150 98 0;
+  --bad: 214 57 48;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: 14 17 23;
+    --surface: 22 26 34;
+    --surface-2: 30 35 45;
+    --line: 44 50 62;
+    --ink: 232 235 241;
+    --ink-2: 168 176 191;
+    --ink-3: 118 128 145;
+    --accent: 116 145 255;
+    --accent-ink: 12 16 30;
+    --ok: 52 199 123;
+    --warn: 242 181 58;
+    --warn-ink: 242 181 58;
+    --bad: 240 98 90;
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --bg: 14 17 23;
+  --surface: 22 26 34;
+  --surface-2: 30 35 45;
+  --line: 44 50 62;
+  --ink: 232 235 241;
+  --ink-2: 168 176 191;
+  --ink-3: 118 128 145;
+  --accent: 116 145 255;
+  --accent-ink: 12 16 30;
+  --ok: 52 199 123;
+  --warn: 242 181 58;
+  --warn-ink: 242 181 58;
+  --bad: 240 98 90;
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+body {
+  @apply bg-bg font-sans text-ink antialiased;
+  font-size: 14px;
+}
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+@layer components {
+  .eyebrow {
+    @apply text-[11px] font-medium uppercase tracking-[0.08em] text-ink-3;
+  }
+  .input {
+    @apply w-full rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-3
+      focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30 disabled:opacity-60;
+  }
+}
+fieldset {
+  min-width: 0;
+}
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+:focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 2px;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-area {
+    position: static !important;
+    box-shadow: none !important;
+  }
+}
