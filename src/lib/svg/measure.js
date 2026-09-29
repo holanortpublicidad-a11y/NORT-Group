@@ -446,8 +446,25 @@ export function measureSvg(text) {
   const solid = items.filter((it) => it.depth % 2 === 0);
   const holes = items.filter((it) => it.depth % 2 === 1);
   const sum = (list, k) => list.reduce((s, x) => s + x[k], 0);
+  // Contornos normalizados (ancho = 1000) y simplificados para el mapa LED
+  const k = 1000 / (maxX - minX || 1);
+  const outline = items.map((it) => {
+    const flat = [];
+    let px = null;
+    let py = null;
+    for (const [x, y] of it.pts) {
+      const X = Math.round((x - minX) * k * 10) / 10;
+      const Y = Math.round((y - minY) * k * 10) / 10;
+      if (px != null && Math.abs(X - px) + Math.abs(Y - py) < 0.6) continue;
+      flat.push(X, Y);
+      px = X;
+      py = Y;
+    }
+    return { hole: it.depth % 2 === 1, pts: flat };
+  });
   return {
     ok: true,
+    polys: outline,
     w: maxX - minX,
     h: maxY - minY,
     perimOuter: sum(solid, 'len'),

@@ -3,8 +3,8 @@ import { num, uid } from '../format.js';
 import { scaleMeasure } from '../svg/measure.js';
 
 export const F1_MODALITIES = [
-  { id: 'caja_rect', name: 'Caja de luz rectangular', short: 'Caja rectangular' },
-  { id: 'caja_contorno', name: 'Caja a contorno', short: 'Caja contorno' },
+  { id: 'caja_rect', name: 'Caja de luz rectangular', short: 'Caja de luz' },
+  { id: 'caja_contorno', name: 'Caja a contorno', short: 'Caja a contorno' },
   { id: 'letras', name: 'Letras 3D individuales', short: 'Letras 3D' },
 ];
 export const F1_LIGHTS = [
@@ -194,7 +194,7 @@ export default {
     const combo = psuCombo(ctx, watts);
     if (ledQty > 0) {
       const led = ctx.pick(p.ledId, 'Iluminación', (i) => n(i.watts) > 0 && n(i.watts) < 5);
-      rows.push(row(ctx, led, ledQty, 'Iluminación', { note: 'cantidad capturada', waste: false }));
+      rows.push(row(ctx, led, ledQty, 'Iluminación', { note: p.ledFromMap ? 'según mapa LED' : 'cantidad capturada', waste: false }));
       for (const c of combo) rows.push(row(ctx, c.item, c.count, 'Fuentes de poder', { note: `${num(watts, 1)} W = ${ledQty} × ${R.ledWatts} W`, waste: false }));
     }
     if (p.labor) rows.push(row(ctx, ctx.pick('srv-armado', 'Servicios/Mano de Obra', (i) => /armado/i.test(i.name)), Math.max(T.face, 0.5), 'Mano de obra', { waste: false }));
@@ -220,7 +220,7 @@ export default {
       );
     });
     specs.push(SPEC('Totales', `cara ${num(T.face, 2)} m² · canto ${num(T.edge, 2)} m.l. · silvatrim ${num(T.silva, 2)} m.l.`));
-    specs.push(SPEC('Iluminación', ledQty ? `${ledQty} módulos · ${num(watts, 1)} W · fuentes ${comboText}` : 'Sin módulos LED'));
+    specs.push(SPEC('Iluminación', ledQty ? `${ledQty} módulos${p.ledFromMap ? ' (mapa LED: 7×1 cm cada 14 cm, columnas 4″, margen 1.5 cm)' : ''} · ${num(watts, 1)} W · fuentes ${comboText}` : 'Sin módulos LED'));
 
     return {
       rows,
@@ -229,7 +229,10 @@ export default {
       m2: T.env,
       summary: `${(p.elements || []).map((e) => e.name || F1_MODALITIES.find((m) => m.id === e.modality)?.short).join(' + ') || 'Anuncio'} · ${num(T.face, 2)} m² de cara`,
       images: (p.elements || [])
-        .map((e) => (e.image?.data ? { name: e.name, ...e.image } : e.measureMode === 'svg' && e.svg?.preview ? { name: `${e.name} (SVG)`, data: e.svg.preview } : null))
+        .flatMap((e) => [
+          e.image?.data ? { name: e.name, ...e.image } : e.measureMode === 'svg' && e.svg?.preview ? { name: `${e.name} (SVG)`, data: e.svg.preview } : null,
+          p.ledFromMap && e.ledMapPreview ? { name: `${e.name} · mapa LED (${e.ledCount} módulos)`, data: e.ledMapPreview } : null,
+        ])
         .filter(Boolean),
     };
   },

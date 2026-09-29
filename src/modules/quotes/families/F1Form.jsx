@@ -9,6 +9,8 @@ import { F1_LIGHTS, F1_MODALITIES, elementGeometry, newElement, psuCombo, signTo
 import { readFileForStorage } from '../../../lib/files.js';
 import { mxn, num } from '../../../lib/format.js';
 import { Choice, Num, Section, Stat } from './shared.jsx';
+import LedMapModal from './LedMapModal.jsx';
+import { modalityLabel } from '../../../lib/led/mask.js';
 
 const SILVA_COLORS = ['Blanco', 'Negro', 'Rojo', 'Azul', 'Amarillo', 'Dorado', 'Plata', 'Aluminio natural'];
 
@@ -284,6 +286,7 @@ function ElementCard({ el, index, rules, onChange, onRemove, canRemove, fid }) {
 }
 
 export default function F1Form({ p, set, catalog, fid }) {
+  const [mapOpen, setMapOpen] = useState(false);
   const rules = catalog.rules;
   const elements = p.elements || [];
   const T = signTotals(p, rules);
@@ -330,7 +333,10 @@ export default function F1Form({ p, set, catalog, fid }) {
             <tbody className="tnum divide-y divide-line/70 font-mono">
               {T.per.map(({ el, g }, i) => (
                 <tr key={el.id}>
-                  <td className="py-1.5 font-sans">{el.name || `Elemento ${i + 1}`}</td>
+                  <td className="py-1.5 font-sans">
+                    <span className="font-medium">{modalityLabel(el.modality)}</span>
+                    {el.name && el.name !== modalityLabel(el.modality) && <span className="block text-[11px] text-ink-3">{el.name}</span>}
+                  </td>
                   <td className="py-1.5 text-right">{num(g.face, 3)} m²</td>
                   <td className="py-1.5 text-right">{num(g.edge, 2)} m.l.</td>
                   <td className="py-1.5 text-right">{num(g.silva, 2)} m.l.</td>
@@ -357,10 +363,10 @@ export default function F1Form({ p, set, catalog, fid }) {
           <Field label="Módulo LED" htmlFor={fid('led')}>
             <ItemSelect id={fid('led')} catalog={catalog} categories={['Iluminación']} filter={(i) => Number(i.watts) > 0 && Number(i.watts) < 5} value={p.ledId} onChange={(v) => set({ ledId: v })} />
           </Field>
-          <Field label="Cantidad de módulos LED" htmlFor={fid('ledq')} hint={`Referencia por medidas: ${suggested} pzas`}>
+          <Field label="Cantidad de módulos LED" htmlFor={fid('ledq')} hint={p.ledFromMap ? 'Tomado del mapa LED' : `Referencia por medidas: ${suggested} pzas · o genera el mapa LED`}>
             <div className="flex gap-1.5">
-              <NumberInput id={fid('ledq')} unit="pzas" step="1" className="flex-1" value={p.ledQty} onChange={(v) => set({ ledQty: v })} />
-              <Button icon={Wand2} onClick={() => set({ ledQty: suggested })} title="Usar la cantidad de referencia">
+              <NumberInput id={fid('ledq')} unit="pzas" step="1" className="flex-1" value={p.ledQty} onChange={(v) => set({ ledQty: v, ledFromMap: false })} />
+              <Button icon={Wand2} onClick={() => set({ ledQty: suggested, ledFromMap: false })} title="Usar la cantidad de referencia">
                 {suggested}
               </Button>
             </div>
@@ -372,6 +378,15 @@ export default function F1Form({ p, set, catalog, fid }) {
           <Stat label="Capacidad instalada" value={combo.reduce((s, c) => s + c.count * c.item.watts, 0)} unit="W" />
           <Stat label="Fuentes (venta)" value={mxn(combo.reduce((s, c) => s + c.count * c.item.price, 0))} />
         </div>
+        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-md border border-dashed border-line p-3">
+          <Button variant="primary" icon={Lightbulb} onClick={() => setMapOpen(true)}>
+            Ver mapa LED
+          </Button>
+          <span className="text-[12.5px] text-ink-3">
+            Coloca módulos de 7 × 1 cm dentro de cada letra o figura (cada 14 cm, columnas a 4″, 1.5 cm de margen) y cuenta el total.
+          </span>
+        </div>
+        {mapOpen && <LedMapModal open onClose={() => setMapOpen(false)} p={p} set={set} catalog={catalog} />}
         {combo.length > 0 && (
           <p className="mt-2 flex items-center gap-2 text-[12.5px] text-ink-2">
             <Lightbulb size={14} className="text-warn" />

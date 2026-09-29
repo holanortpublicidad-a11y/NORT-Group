@@ -34,6 +34,8 @@ src/
     storage.js                Persistencia en localStorage (la migración de datos anteriores vive en store/AppStore.jsx)
     files.js                  Lectura de archivos e imágenes reducidas para guardarlas
     svg/measure.js            Lector vectorial de SVG: canto (contornos + calados), silvatrim y área neta
+    led/layout.js             Colocación de módulos LED por el interior (trazo central y columnas a 4"), puro y probado
+    led/mask.js               Silueta de cada elemento (SVG, caja o texto) → máscara raster para el mapa LED
     sla.js · permissions.js · format.js
   store/AppStore.jsx          Estado global (useReducer) + guardado automático
   components/                 UI kit, selector de insumos, tabla BOM, adjuntos, croquis con cotas
@@ -70,6 +72,20 @@ polygon, `<use>`), aplica las transformaciones y detecta los calados por anidami
 Los textos deben ir convertidos a curvas; las figuras sin relleno (guías, marcos) se ignoran.
 No usa Paper.js para no agregar dependencias; si se prefiere, `measureSvg()` se puede reimplementar con
 `paper.project.importSVG()` devolviendo el mismo objeto.
+
+## Mapa LED (montaje interior)
+
+Botón **Ver mapa LED** en el anuncio luminoso. Reglas de taller (editables en `LED_RULES`, `lib/led/layout.js`):
+módulo 7 × 1 cm · cable 7 cm · paso 14 cm · columnas a 4″ (10.16 cm) · margen de 1.5 cm a la pared.
+
+1. La silueta se rasteriza (los calados quedan fuera) y se calcula la distancia de cada punto a la pared.
+2. **Trazo central:** esqueleto de la zona útil; módulos cada 14 cm girados según la tangente, con cable entre ellos.
+3. **Columnas a 4″:** líneas verticales recortadas a la zona útil; módulos cada 14 cm.
+4. **Automático:** trazo central si el trazo más grueso de la pieza mide ≤ 2 columnas; si no, columnas y se
+   completan con trazo central los tramos angostos.
+
+“Usar N módulos” pasa el total a la cotización (fuentes con W = módulos × 1.2) y guarda la imagen del mapa
+para la OT. Con SVG la silueta es exacta; sin SVG, las letras se aproximan con una tipografía genérica.
 
 ## Prospectos y clientes
 
