@@ -102,10 +102,23 @@ export default function FamilyLineEditor({ index, item, catalog, onChange, onRem
                 {item.install?.enabled && (
                   <div className="grid-cols-1 grid gap-3 sm:grid-cols-2">
                     <Field label="Superficie donde se instalará" htmlFor={fid('surf')}>
-                      <Select id={fid('surf')} value={item.install.surfaceId} onChange={(e) => setI({ surfaceId: e.target.value })}>
+                      <Select id={fid('surf')} value={item.install.surfaceId} onChange={(e) => setI({ surfaceId: e.target.value, anchorId: null })}>
                         {R.install.surfaces.map((s) => (
                           <option key={s.id} value={s.id}>
                             {s.name} (×{s.factor})
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                    <Field label="Tipo de anclaje" htmlFor={fid('anchor')}>
+                      <Select
+                        id={fid('anchor')}
+                        value={item.install.anchorId || R.install.surfaces.find((x) => x.id === item.install.surfaceId)?.anchorId || ''}
+                        onChange={(e) => setI({ anchorId: e.target.value })}
+                      >
+                        {(R.install.anchors || []).map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.name}
                           </option>
                         ))}
                       </Select>

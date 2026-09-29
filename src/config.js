@@ -1,10 +1,12 @@
 // Configuración de la empresa y banderas de entorno.
 export const COMPANY = {
-  name: 'Cota Señalética',
-  legal: 'Cota Señalética y Publicidad S.A. de C.V.',
-  rfc: 'CSP180522KT7',
-  address: 'Av. Tecnológico 1540, Col. Partido Escobedo, Cd. Juárez, Chih.',
-  phone: '656 000 0000',
+  name: 'NORT Publicidad',
+  // Completa con los datos fiscales reales; los campos vacíos no se imprimen.
+  legal: '',
+  rfc: '',
+  address: 'Cd. Juárez, Chihuahua',
+  phone: '',
+  whatsapp: '',
 };
 
 // En la versión embebida (artefacto) la impresión del navegador no está disponible.

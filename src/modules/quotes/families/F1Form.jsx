@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ChevronDown, ImagePlus, Lightbulb, Plus, Trash2, Wand2 } from 'lucide-react';
+import { AlertTriangle, ChevronDown, FileUp, ImagePlus, Lightbulb, Plus, Trash2, Wand2 } from 'lucide-react';
+import { measureSvg, rasterizeSvg } from '../../../lib/svg/measure.js';
 import { Button, Check, Field, IconButton, Input, NumberInput, Select, cx } from '../../../components/ui.jsx';
 import { ItemSelect } from '../../../components/inventory-ui.jsx';
 import { CANTO_COLORS, FRENTE_COLORS } from '../../../data/inventory.js';
@@ -80,6 +81,102 @@ function ElementImage({ id, image, onChange }) {
   );
 }
 
+const MEASURE_MODES = [
+  { id: 'manual', name: 'Manual (base × altura)' },
+  { id: 'svg', name: 'Desde archivo SVG' },
+];
+
+/** Carga un SVG, lo mide y escala las medidas al ancho deseado. */
+function SvgMeasure({ el, set, k, rules }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [over, setOver] = useState(false);
+  const g = elementGeometry(el, rules);
+  const load = async (files) => {
+    const file = [...files].find((f) => /svg/i.test(f.type) || /\.svg$/i.test(f.name));
+    if (!file) return setError('Elige un archivo .svg (exportado desde Illustrator, CorelDRAW o Inkscape).');
+    setBusy(true);
+    setError('');
+    const text = await file.text();
+    const m = measureSvg(text);
+    if (!m.ok) {
+      setBusy(false);
+      return setError(m.error);
+    }
+    const preview = await rasterizeSvg(text);
+    set({ svg: { ...m, name: file.name, preview }, letterCount: el.modality === 'letras' ? m.pieces : el.letterCount });
+    setBusy(false);
+  };
+  const s = el.svg;
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-2/40 p-3">
+      <label
+        htmlFor={k('svgf')}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setOver(true);
+        }}
+        onDragLeave={() => setOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setOver(false);
+          load(e.dataTransfer.files);
+        }}
+        className={cx(
+          'flex cursor-pointer items-center gap-3 rounded-md border border-dashed p-3 text-[12.5px] transition',
+          over ? 'border-accent bg-accent/5 text-accent' : 'border-line text-ink-2 hover:border-accent/60',
+        )}
+      >
+        {s?.preview ? (
+          <img src={s.preview} alt={`Vista previa de ${s.name}`} className="h-20 w-32 shrink-0 rounded border border-line bg-white object-contain" />
+        ) : (
+          <FileUp size={22} className="shrink-0" />
+        )}
+        <span className="min-w-0">
+          <span className="block font-medium text-ink">{busy ? 'Leyendo vectores…' : s ? s.name : 'Subir logotipo o arte en SVG'}</span>
+          <span className="block text-ink-3">{s ? 'Toca para reemplazar' : 'Textos convertidos a curvas · se miden contornos y calados'}</span>
+        </span>
+        <input id={k('svgf')} type="file" accept=".svg,image/svg+xml" className="sr-only" onChange={(e) => e.target.files?.length && load(e.target.files)} />
+      </label>
+      {error && <p className="text-[12.5px] text-bad">{error}</p>}
+      {s?.ok && (
+        <>
+          <div className="grid grid-cols-3 gap-3">
+            <Num label="Ancho total deseado" id={k('svgw')} unit="cm" step="1" value={el.svgWidthCm} onChange={(v) => set({ svgWidthCm: v })} />
+            <Stat label="Alto resultante" value={num(g.H * 100, 1)} unit="cm" />
+            <Num label="Cantidad" id={k('q')} unit="pza" step="1" min={1} value={el.qty} onChange={(v) => set({ qty: v })} />
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Stat label="Canto (ext. + calados)" value={num(g.edge, 2)} unit="m.l." />
+            <Stat label="Área neta de cara" value={num(g.face, 3)} unit="m²" />
+            <Stat label="Contornos exteriores" value={num(g.outer, 2)} unit="m.l." />
+            <Stat label="Calados interiores" value={num(g.inner, 2)} unit="m.l." />
+          </div>
+          <p className="text-[12px] text-ink-3">
+            {s.pieces} piezas · {s.holes} calados · {s.shapes} contornos leídos
+          </p>
+          {isLetters(el) && (
+            <Field label="Texto (para la ficha)" htmlFor={k('stxt')}>
+              <Input id={k('stxt')} className="font-display tracking-wider" value={el.text} placeholder="POLLO SINALOA" onChange={(e) => set({ text: e.target.value })} />
+            </Field>
+          )}
+          {s.warnings?.length > 0 && (
+            <ul className="flex flex-col gap-1 text-[12px] text-warn-ink">
+              {s.warnings.map((w) => (
+                <li key={w} className="flex gap-1.5">
+                  <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+                  {w}
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+const isLetters = (el) => el.modality === 'letras';
+
 function ElementCard({ el, index, rules, onChange, onRemove, canRemove, fid }) {
   const [open, setOpen] = useState(true);
   const set = (patch) => onChange({ ...el, ...patch });
@@ -104,7 +201,7 @@ function ElementCard({ el, index, rules, onChange, onRemove, canRemove, fid }) {
             className="w-full rounded bg-transparent px-1 font-medium outline-none focus:bg-surface"
           />
           <div className="truncate px-1 text-[11.5px] text-ink-3">
-            {mod?.short} · cara {num(g.face, 2)} m² · canto {num(g.edge, 2)} m.l.
+            {mod?.short}{g.fromSvg ? ' · SVG' : ''} · cara {num(g.face, 2)} m² · canto {num(g.edge, 2)} m.l.
           </div>
         </div>
         {canRemove && <IconButton icon={Trash2} label={`Quitar ${el.name}`} onClick={onRemove} className="hover:text-bad" />}
@@ -116,19 +213,26 @@ function ElementCard({ el, index, rules, onChange, onRemove, canRemove, fid }) {
             <Choice label="Modalidad" id={k('mod')} options={F1_MODALITIES} value={el.modality} onChange={(v) => set({ modality: v })} />
             <Choice label="Tipo de luz" id={k('light')} options={F1_LIGHTS} value={el.light} onChange={(v) => set({ light: v })} />
           </div>
-          {letters && (
-            <div className="grid grid-cols-[1fr_110px] gap-3">
-              <Field label="Texto" htmlFor={k('txt')}>
-                <Input id={k('txt')} className="font-display text-lg tracking-wider" value={el.text} placeholder="POLLO SINALOA" onChange={(e) => set({ text: e.target.value, letterCount: e.target.value.replace(/\s/g, '').length || el.letterCount })} />
-              </Field>
-              <Num label="Nº de letras" id={k('n')} step="1" value={el.letterCount} onChange={(v) => set({ letterCount: v })} />
-            </div>
+          <Choice label="Medidas" id={k('mm')} options={MEASURE_MODES} value={el.measureMode ?? 'manual'} onChange={(v) => set({ measureMode: v })} />
+          {el.measureMode === 'svg' ? (
+            <SvgMeasure el={el} set={set} k={k} rules={rules} />
+          ) : (
+            <>
+              {letters && (
+                <div className="grid grid-cols-[1fr_110px] gap-3">
+                  <Field label="Texto" htmlFor={k('txt')}>
+                    <Input id={k('txt')} className="font-display text-lg tracking-wider" value={el.text} placeholder="POLLO SINALOA" onChange={(e) => set({ text: e.target.value, letterCount: e.target.value.replace(/\s/g, '').length || el.letterCount })} />
+                  </Field>
+                  <Num label="Nº de letras" id={k('n')} step="1" value={el.letterCount} onChange={(v) => set({ letterCount: v })} />
+                </div>
+              )}
+              <div className="grid grid-cols-3 gap-3">
+                <Num label={letters ? 'Largo total' : 'Base'} id={k('w')} unit="m" step="0.01" value={el.width} onChange={(v) => set({ width: v })} />
+                <Num label={letters ? 'Altura de letra' : 'Altura'} id={k('h')} unit="m" step="0.01" value={el.height} onChange={(v) => set({ height: v })} />
+                <Num label="Cantidad" id={k('q')} unit="pza" step="1" min={1} value={el.qty} onChange={(v) => set({ qty: v })} />
+              </div>
+            </>
           )}
-          <div className="grid grid-cols-3 gap-3">
-            <Num label={letters ? 'Largo total' : 'Ancho'} id={k('w')} unit="m" step="0.01" value={el.width} onChange={(v) => set({ width: v })} />
-            <Num label={letters ? 'Altura de letra' : 'Alto'} id={k('h')} unit="m" step="0.01" value={el.height} onChange={(v) => set({ height: v })} />
-            <Num label="Cantidad" id={k('q')} unit="pza" step="1" min={1} value={el.qty} onChange={(v) => set({ qty: v })} />
-          </div>
 
           <div className="grid-cols-1 grid gap-3 sm:grid-cols-2">
             <Choice label="Canto de aluminio · profundidad" id={k('cs')} options={rules.f1.cantoSizes} value={el.cantoSize} onChange={(v) => set({ cantoSize: v })} />
@@ -146,6 +250,9 @@ function ElementCard({ el, index, rules, onChange, onRemove, canRemove, fid }) {
             <Field label='Silvatrim / cercha 1"' htmlFor={k('sv')}>
               <div className="flex flex-col gap-1.5">
                 <Check id={k('sv')} label={`Incluir · ${num(el.silvatrim ? g.silva : elementGeometry({ ...el, silvatrim: true }, rules).silva, 2)} m.l.`} checked={el.silvatrim} onChange={(v) => set({ silvatrim: v })} />
+                {el.silvatrim && el.measureMode === 'svg' && el.svg?.ok && (
+                  <Check id={k('svin')} label="También en calados interiores" checked={el.silvaInner !== false} onChange={(v) => set({ silvaInner: v })} />
+                )}
                 {el.silvatrim && (
                   <Select id={k('svc')} aria-label="Color de silvatrim" value={el.silvatrimColor} onChange={(e) => set({ silvatrimColor: e.target.value })}>
                     {SILVA_COLORS.map((c) => (
@@ -157,13 +264,13 @@ function ElementCard({ el, index, rules, onChange, onRemove, canRemove, fid }) {
                 )}
               </div>
             </Field>
-            <Field label="Rotulación del frente" htmlFor={k('rot')}>
+            <Field label="Vinil del frente" htmlFor={k('rot')}>
               <div className="grid grid-cols-[1fr_96px] gap-1.5">
                 <Select id={k('rot')} value={el.rotId ?? ''} onChange={(e) => set({ rotId: e.target.value || null })}>
-                  <option value="">Sin rotulación</option>
-                  <option value="vin-corte">Vinil de corte</option>
+                  <option value="">Sin vinil</option>
                   <option value="vin-corte-tras">Vinil de corte traslúcido</option>
-                  <option value="vin-impreso">Vinil impreso full color</option>
+                  <option value="vin-impreso-trans">Vinil impreso transparente</option>
+                  {el.rotId && !['vin-corte-tras', 'vin-impreso-trans'].includes(el.rotId) && <option value={el.rotId}>Otro vinil (capturado antes)</option>}
                 </Select>
                 {el.rotId && <NumberInput id={k('cov')} aria-label="Cobertura" unit="%" step="5" value={el.rotCoverage} onChange={(v) => set({ rotCoverage: v })} />}
               </div>

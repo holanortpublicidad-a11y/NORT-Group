@@ -1,7 +1,7 @@
 import React from 'react';
 import { Copy, MessageCircle, Printer } from 'lucide-react';
 import { useApp } from '../../store/AppStore.jsx';
-import { Button, Modal, copyText } from '../../components/ui.jsx';
+import { Button, Modal, PrintPortal, copyText } from '../../components/ui.jsx';
 import { calcQuote } from '../../lib/pricing.js';
 import { DAY, fmtDate, mxn, num } from '../../lib/format.js';
 import { COMPANY, PRINT_ENABLED } from '../../config.js';
@@ -41,39 +41,15 @@ export default function QuotePreview({ open, onClose, quote }) {
   const phone = (client?.contact.whatsapp || client?.contact.phone || '').replace(/\D/g, '').slice(-10);
   const wa = `https://wa.me/52${phone}?text=${encodeURIComponent(text)}`;
 
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      size="lg"
-      title="Vista previa para el cliente"
-      subtitle="Así se verá el documento que recibe el cliente"
-      footer={
-        <>
-          <Button icon={Copy} onClick={() => copyText(text, (ok) => notify(ok ? 'Resumen copiado' : 'No se pudo copiar; selecciona el texto manualmente', ok ? 'ok' : 'bad'))}>
-            Copiar resumen
-          </Button>
-          <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-sm font-medium hover:bg-surface-2">
-            <MessageCircle size={17} /> Enviar por WhatsApp
-          </a>
-          {PRINT_ENABLED && (
-            <Button variant="primary" icon={Printer} onClick={() => window.print()}>
-              Imprimir / PDF
-            </Button>
-          )}
-        </>
-      }
-    >
-      {/* Documento: papel siempre claro */}
-      <div className="scroll-x">
-        <article className="print-area mx-auto min-w-[560px] max-w-[820px] rounded-md bg-white p-8 text-[12.5px] leading-relaxed text-[#1a1f2b] shadow-[0_1px_0_#0001,0_8px_30px_#0000001a]">
+  const doc = (
+<article className="mx-auto min-w-[560px] max-w-[820px] rounded-md bg-white p-8 text-[12.5px] leading-relaxed text-[#1a1f2b] shadow-[0_1px_0_#0001,0_8px_30px_#0000001a]">
           <header className="flex items-start justify-between gap-6 border-b-2 border-[#1a1f2b] pb-4">
             <div>
               <div className="font-display text-[26px] font-bold leading-none tracking-wide">{COMPANY.name.toUpperCase()}</div>
               <div className="mt-1 text-[11px] text-[#5a6272]">
-                {COMPANY.legal} · RFC {COMPANY.rfc}
-                <br />
-                {COMPANY.address}
+                {[COMPANY.legal, COMPANY.rfc && `RFC ${COMPANY.rfc}`].filter(Boolean).join(' · ')}
+                {(COMPANY.legal || COMPANY.rfc) && <br />}
+                {[COMPANY.address, COMPANY.phone].filter(Boolean).join(' · ')}
               </div>
             </div>
             <div className="text-right">
@@ -190,7 +166,34 @@ export default function QuotePreview({ open, onClose, quote }) {
             <div className="w-48 border-t border-[#1a1f2b] pt-1 text-center text-[#1a1f2b]">Acepto · firma del cliente</div>
           </footer>
         </article>
-      </div>
+  );
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      size="lg"
+      title="Vista previa para el cliente"
+      subtitle="Así se verá el documento que recibe el cliente"
+      footer={
+        <>
+          <Button icon={Copy} onClick={() => copyText(text, (ok) => notify(ok ? 'Resumen copiado' : 'No se pudo copiar; selecciona el texto manualmente', ok ? 'ok' : 'bad'))}>
+            Copiar resumen
+          </Button>
+          <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-md border border-line bg-surface px-3.5 text-sm font-medium hover:bg-surface-2">
+            <MessageCircle size={17} /> Enviar por WhatsApp
+          </a>
+          {PRINT_ENABLED && (
+            <Button variant="primary" icon={Printer} onClick={() => window.print()}>
+              Imprimir / PDF
+            </Button>
+          )}
+        </>
+      }
+    >
+      {/* Documento: papel siempre claro */}
+      <div className="scroll-x">{doc}</div>
+      {PRINT_ENABLED && <PrintPortal>{doc}</PrintPortal>}
     </Modal>
   );
 }

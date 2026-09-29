@@ -36,8 +36,24 @@ function withDefaults(def, saved) {
 function migrate(saved) {
   const rules = withDefaults(DEFAULT_RULES, saved.catalog?.rules ?? {});
   const known = new Set((saved.catalog?.items ?? []).map((i) => i.id));
-  const items = (saved.catalog?.items ?? []).map((i) => (i.id === 'srv-grua' && /\(d[ií]a\)/i.test(i.name) ? DEFAULT_ITEMS.find((d) => d.id === 'srv-grua') : i));
+  const def = (id) => DEFAULT_ITEMS.find((d) => d.id === id);
+  const items = (saved.catalog?.items ?? []).map((i) => {
+    if (i.id === 'srv-grua' && /\(d[ií]a\)/i.test(i.name)) return def('srv-grua');
+    // herrajes y kit pasan a la categoría Consumibles
+    if (/^her-/.test(i.id) && i.category === 'Perfiles y Canales') return { ...i, category: 'Consumibles', ...(i.id === 'her-kit' && /kit/.test(i.name) ? { name: def('her-kit').name } : {}) };
+    if ((i.id === 'led-2' || i.id === 'led-3') && !/·/.test(i.name)) return { ...i, name: `${i.name} · blanco puro` };
+    return i;
+  });
   for (const d of DEFAULT_ITEMS) if (!known.has(d.id)) items.push(d);
+  // superficies nuevas (concreto, lámina) y anclaje sugerido por superficie
+  const savedSurf = rules.install.surfaces;
+  rules.install = {
+    ...rules.install,
+    surfaces: [
+      ...savedSurf.map((x) => ({ anchorId: DEFAULT_RULES.install.surfaces.find((d) => d.id === x.id)?.anchorId ?? 'taquete', ...x })),
+      ...DEFAULT_RULES.install.surfaces.filter((d) => !savedSurf.some((x) => x.id === d.id)),
+    ],
+  };
   const quotes = (saved.quotes ?? []).map((q) => ({
     ...q,
     items: q.items.map((it) => ({

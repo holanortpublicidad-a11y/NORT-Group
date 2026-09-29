@@ -42,13 +42,13 @@ export default {
       if (p.cnc) add(row(ctx, ctx.pick('srv-cnc', 'Servicios/Mano de Obra', (i) => /cnc/i.test(i.name)), perim * q, 'Maquinado', { waste: false }));
       if (p.mounting === 'pernos') {
         const per = R.pernosBase + Math.floor(a * R.pernosPerM2);
-        add(row(ctx, ctx.pick('her-perno', 'Perfiles y Canales', (i) => /perno/i.test(i.name)), per * q, 'Montaje', { note: `${per} por pieza` }));
+        add(row(ctx, ctx.pick('her-perno', 'Consumibles', (i) => /perno/i.test(i.name)), per * q, 'Montaje', { note: `${per} por pieza` }));
         mountText = `Perno separador inox · ${per} por pieza`;
       } else if (p.mounting === 'cinta') {
-        add(row(ctx, ctx.pick('her-cinta', 'Perfiles y Canales', (i) => /cinta/i.test(i.name)), perim * R.cintaFactor * q, 'Montaje', { waste: false }));
+        add(row(ctx, ctx.pick('her-cinta', 'Consumibles', (i) => /cinta/i.test(i.name)), perim * R.cintaFactor * q, 'Montaje', { waste: false }));
         mountText = 'Cinta doble cara industrial';
       } else {
-        add(row(ctx, ctx.pick('her-pega', 'Perfiles y Canales', (i) => /pegamento/i.test(i.name)), Math.max(1, Math.ceil((a * q) / R.pegaM2PerTube)), 'Montaje'));
+        add(row(ctx, ctx.pick('her-pega', 'Consumibles', (i) => /pegamento/i.test(i.name)), Math.max(1, Math.ceil((a * q) / R.pegaM2PerTube)), 'Montaje'));
         mountText = 'Pegamento especial';
       }
     }

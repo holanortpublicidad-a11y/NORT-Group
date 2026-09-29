@@ -65,7 +65,7 @@ export default function QuoteEditor({ route }) {
       )}
       {canApprove && (
         <Button variant="ok" icon={CheckCircle2} onClick={() => setConfirm(true)}>
-          Aprobar y generar OT
+          Aprobar y convertir en OT
         </Button>
       )}
     </>
@@ -268,7 +268,7 @@ export default function QuoteEditor({ route }) {
               </Button>
               {canApprove && (
                 <Button variant="ok" icon={CheckCircle2} onClick={() => setConfirm(true)}>
-                  Aprobar y generar {nextOt}
+                  Aprobar y convertir en {nextOt}
                 </Button>
               )}
             </div>
@@ -326,7 +326,7 @@ export default function QuoteEditor({ route }) {
                 dispatch({ type: 'APPROVE_QUOTE', id: quote.id });
               }}
             >
-              Aprobar y crear OT
+              Aprobar y convertir en OT
             </Button>
           </>
         }

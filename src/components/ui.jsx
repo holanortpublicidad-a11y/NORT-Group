@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { initials } from '../lib/format.js';
 import { SLA_META } from '../lib/sla.js';
@@ -304,4 +305,10 @@ export function Check({ id, label, checked, onChange, disabled, hint }) {
       </span>
     </label>
   );
+}
+
+/** Copia del documento montada directo en <body> para imprimir sin la interfaz. */
+export function PrintPortal({ children }) {
+  if (typeof document === 'undefined') return null;
+  return createPortal(<div className="print-only">{children}</div>, document.body);
 }

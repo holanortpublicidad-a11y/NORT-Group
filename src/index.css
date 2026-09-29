@@ -105,12 +105,30 @@ fieldset {
     transition: none !important;
   }
 }
+.print-only {
+  display: none;
+}
 @media print {
-  .no-print {
+  @page {
+    margin: 12mm;
+  }
+  body {
+    background: #fff !important;
+  }
+  body > *:not(.print-only) {
     display: none !important;
   }
-  .print-area {
-    position: static !important;
+  .print-only {
+    display: block !important;
+  }
+  .print-only article {
     box-shadow: none !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  .break-inside-avoid {
+    break-inside: avoid;
   }
 }
+

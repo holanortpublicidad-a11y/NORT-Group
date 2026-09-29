@@ -47,7 +47,7 @@ const js = await esbuild.build({
   nodePaths: [G],
   alias: { 'lucide-react': shimPath },
   loader: { '.css': 'empty' },
-  define: { 'process.env.NODE_ENV': '"production"', 'import.meta.env.VITE_PRINT': '"false"' },
+  define: { 'process.env.NODE_ENV': '"production"', 'import.meta.env.VITE_PRINT': JSON.stringify(process.env.VITE_PRINT ?? 'false') },
   logLevel: 'warning',
 });
 const code = js.outputFiles[0].text;
@@ -61,7 +61,7 @@ execFileSync('node', [path.join(G, '@mermaid-js/mermaid-cli/node_modules/tailwin
 const css = fs.readFileSync(cssOut, 'utf8');
 
 // 4) HTML único
-const html = `<title>Cota ERP</title>
+const html = `<title>NORT ERP</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">

@@ -85,7 +85,8 @@ export function installRows(ctx, install, m2) {
     rows.push(row(ctx, crane, plan.hours, 'Equipo de altura', { waste: false, note: `${num(plan.hours, 1)} h de maniobra` }));
     equipText = `grúa boom ${num(plan.hours, 1)} h`;
   }
-  return { rows, spec: { label: 'Instalación', value: `${surf.name} · ${num(plan.h, 1)} m de altura · ${equipText}` } };
+  const anchor = (r.anchors || []).find((x) => x.id === (install.anchorId || surf.anchorId));
+  return { rows, spec: { label: 'Instalación', value: `${surf.name}${anchor ? ` · anclaje: ${anchor.name.toLowerCase()}` : ''} · ${num(plan.h, 1)} m de altura · ${equipText}` } };
 }
 
 export const SPEC = (label, value) => ({ label, value });

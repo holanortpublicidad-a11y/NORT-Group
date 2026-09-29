@@ -1,5 +1,6 @@
 import { SPEC, n, row } from './common.js';
 import { num, uid } from '../format.js';
+import { scaleMeasure } from '../svg/measure.js';
 
 export const F1_MODALITIES = [
   { id: 'caja_rect', name: 'Caja de luz rectangular', short: 'Caja rectangular' },
@@ -35,11 +36,36 @@ export function newElement(patch = {}) {
     rotId: 'vin-corte-tras',
     rotCoverage: 60,
     image: null,
+    measureMode: 'manual', // 'manual' | 'svg'
+    svg: null, // medición del archivo: { name, preview, w, h, perimeter, perimOuter, perimInner, area, pieces, holes, warnings }
+    svgWidthCm: 120,
+    silvaInner: true, // silvatrim también en calados interiores
     ...patch,
   };
 }
 
 export function elementGeometry(el, rules) {
+  const q = Math.max(1, n(el.qty, 1));
+  // Medidas leídas del SVG, escaladas al ancho deseado
+  if (el.measureMode === 'svg' && el.svg?.ok) {
+    const sm = scaleMeasure(el.svg, n(el.svgWidthCm), { silvaInner: el.silvaInner !== false });
+    if (sm) {
+      return {
+        W: sm.widthM,
+        H: sm.heightM,
+        q,
+        env: sm.widthM * sm.heightM * q,
+        face: sm.areaM2 * q,
+        edge: sm.cantoMl * q,
+        silva: el.silvatrim ? sm.silvaMl * q : 0,
+        fromSvg: true,
+        pieces: el.svg.pieces,
+        holes: el.svg.holes,
+        outer: sm.outerMl * q,
+        inner: sm.innerMl * q,
+      };
+    }
+  }
   const W = n(el.width);
   const H = n(el.height);
   const R = rules.f1;
@@ -53,7 +79,6 @@ export function elementGeometry(el, rules) {
     face = env * R.fill.letras;
     edge = n(el.letterCount) * H * R.kPerimLetras;
   }
-  const q = Math.max(1, n(el.qty, 1));
   return { W, H, q, env: env * q, face: face * q, edge: edge * q, silva: el.silvatrim ? edge * q : 0 };
 }
 
@@ -154,7 +179,7 @@ export default {
       if (el.silvatrim) put(ctx.pick('per-silva', 'Perfiles y Canales', (i) => /silva|cercha/i.test(i.name)), g.silva, 'Silvatrim / cercha 1"', `${label}: ${String(el.silvatrimColor).toLowerCase()}`);
       if (el.rotId && n(el.rotCoverage) > 0) put(ctx.find(el.rotId), g.face * (n(el.rotCoverage) / 100), 'Rotulación', `${label}: ${n(el.rotCoverage)}%`);
       if (p.cnc && el.modality !== 'caja_rect') put(ctx.pick('srv-cnc', 'Servicios/Mano de Obra', (i) => /cnc/i.test(i.name)), g.edge * 2, 'Maquinado', label);
-      if (p.kit) put(ctx.pick('her-kit', 'Perfiles y Canales', (i) => /torniller/i.test(i.name)), (el.modality === 'letras' ? Math.max(1, Math.ceil(n(el.letterCount) / 4)) : 1) * g.q, 'Consumibles');
+      if (p.kit) put(ctx.pick('her-kit', 'Consumibles', (i) => /consumible|torniller/i.test(i.name)), (el.modality === 'letras' ? Math.max(1, Math.ceil((g.fromSvg ? g.pieces : n(el.letterCount)) / 4)) : 1) * g.q, 'Consumibles');
     }
 
     const rows = [];
@@ -182,8 +207,9 @@ export default {
       return SPEC(
         `${i + 1}. ${el.name || mod}`,
         [
-          el.modality === 'letras' && el.text ? `“${el.text}” · ${n(el.letterCount)} letras` : mod,
+          el.modality === 'letras' && el.text ? `“${el.text}” · ${g.fromSvg ? g.pieces : n(el.letterCount)} letras` : mod,
           `${num(g.W)} × ${num(g.H)} m${g.q > 1 ? ` × ${g.q}` : ''}`,
+          g.fromSvg ? `medido de ${el.svg.name} (${g.pieces} piezas, ${g.holes} calados)` : null,
           F1_LIGHTS.find((l) => l.id === el.light)?.name.toLowerCase(),
           `canto ${size} ${colorOf(el.cantoColor, el.cantoColorCustom).toLowerCase()}`,
           `frente ${fm?.toLowerCase()} ${colorOf(el.frenteColor, el.frenteColorCustom).toLowerCase()}`,
@@ -202,7 +228,9 @@ export default {
       installM2: T.env,
       m2: T.env,
       summary: `${(p.elements || []).map((e) => e.name || F1_MODALITIES.find((m) => m.id === e.modality)?.short).join(' + ') || 'Anuncio'} · ${num(T.face, 2)} m² de cara`,
-      images: (p.elements || []).filter((e) => e.image?.data).map((e) => ({ name: e.name, ...e.image })),
+      images: (p.elements || [])
+        .map((e) => (e.image?.data ? { name: e.name, ...e.image } : e.measureMode === 'svg' && e.svg?.preview ? { name: `${e.name} (SVG)`, data: e.svg.preview } : null))
+        .filter(Boolean),
     };
   },
 };

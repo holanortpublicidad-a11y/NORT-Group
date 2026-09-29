@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, Copy, ExternalLink, FileText, MapPin, Phone, Send } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ClipboardList, Copy, ExternalLink, FileText, MapPin, MessageCircle, Phone, Send } from 'lucide-react';
 import { useApp } from '../../store/AppStore.jsx';
 import { Avatar, Badge, Button, Field, Input, Select, Sheet, SlaBar, SlaPill, copyText, cx } from '../../components/ui.jsx';
 import { PHASES, computeSla, phaseIndex, phaseName } from '../../lib/sla.js';
 import { fmtDate, fmtDateTime, fromInputDate, mxn, num, toInputDate } from '../../lib/format.js';
 import { canMovePhase, canSeeCosts, roleName } from '../../lib/permissions.js';
 import Attachments from '../../components/Attachments.jsx';
+import OrderSheet, { orderAsText } from './OrderSheet.jsx';
 import { unitLabel } from '../../data/inventory.js';
 import { TEAMS } from '../../data/mockData.js';
 
@@ -54,6 +55,7 @@ function Spec({ label, value }) {
 export default function OrderDetail({ id, onClose }) {
   const { state, dispatch, role, now, nav, clientById, userById, notify } = useApp();
   const [note, setNote] = useState('');
+  const [sheet, setSheet] = useState(false);
   const order = state.orders.find((o) => o.id === id);
   if (!order) return null;
 
@@ -90,6 +92,14 @@ export default function OrderDetail({ id, onClose }) {
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <Badge tone="accent">{phaseName(order.phase)}</Badge>
           <SlaPill sla={sla} />
+          <span className="flex basis-full gap-2 pt-1 sm:basis-auto sm:pt-0">
+            <Button size="sm" icon={MessageCircle} onClick={() => copyText(orderAsText(order, { client, now, userById }), (ok) => notify(ok ? 'Resumen copiado para WhatsApp' : 'No se pudo copiar', ok ? 'ok' : 'bad'))}>
+              Copiar resumen
+            </Button>
+            <Button size="sm" icon={ClipboardList} onClick={() => setSheet(true)}>
+              Ficha / PDF
+            </Button>
+          </span>
         </div>
       }
       footer={
@@ -326,6 +336,7 @@ export default function OrderDetail({ id, onClose }) {
           <Button type="submit" icon={Send} aria-label="Agregar nota" />
         </form>
       </Section>
+      {sheet && <OrderSheet order={order} onClose={() => setSheet(false)} />}
     </Sheet>
   );
 }

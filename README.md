@@ -1,4 +1,4 @@
-# Cota ERP — Señalética, publicidad exterior y letras 3D
+# NORT Publicidad · ERP/CRM de señalética y anuncios luminosos
 
 Frontend en **React 18 + Tailwind CSS 3 + Lucide Icons** con estado global (Context + useReducer) y datos de prueba.
 
@@ -33,6 +33,7 @@ src/
     orders.js                 Cotización aprobada → OT con ficha técnica, BOM y archivos congelados
     storage.js                Persistencia en localStorage (la migración de datos anteriores vive en store/AppStore.jsx)
     files.js                  Lectura de archivos e imágenes reducidas para guardarlas
+    svg/measure.js            Lector vectorial de SVG: canto (contornos + calados), silvatrim y área neta
     sla.js · permissions.js · format.js
   store/AppStore.jsx          Estado global (useReducer) + guardado automático
   components/                 UI kit, selector de insumos, tabla BOM, adjuntos, croquis con cotas
@@ -56,6 +57,20 @@ manual o calculado por margen objetivo: `precio = costo ÷ (1 − margen)`.
 Al aprobar una cotización se descuenta del stock el material de los insumos con inventario controlado y queda
 registrado en *Movimientos* con el folio de la OT.
 
+## Lector de SVG (anuncios luminosos)
+
+En cada elemento del anuncio elige **Medidas → Desde archivo SVG**, sube el arte y escribe el ancho total en cm.
+`lib/svg/measure.js` aplana todas las figuras rellenas (path con curvas y arcos, rect, circle, ellipse,
+polygon, `<use>`), aplica las transformaciones y detecta los calados por anidamiento de contornos:
+
+- canto (m.l.) = perímetro de contornos exteriores + calados interiores
+- silvatrim (m.l.) = igual al canto, o solo exteriores si se desmarca “También en calados interiores”
+- cara (m²) = área de piezas − área de calados
+
+Los textos deben ir convertidos a curvas; las figuras sin relleno (guías, marcos) se ignoran.
+No usa Paper.js para no agregar dependencias; si se prefiere, `measureSvg()` se puede reimplementar con
+`paper.project.importSVG()` devolviendo el mismo objeto.
+
 ## Prospectos y clientes
 
 Cada contacto tiene `type: 'prospecto' | 'cliente'`. Desde el cotizador se registra un prospecto sin salir del
@@ -65,7 +80,8 @@ formulario; al aprobar la cotización (y generar la OT) el contacto pasa a `clie
 
 - Persistencia multiusuario: hoy todo vive en `localStorage` del navegador; sustituir `lib/storage.js` por API (p. ej. Supabase/PostgreSQL o NestJS) manteniendo las mismas acciones.
 - Autenticación real y roles desde el backend (`permissions.js` ya centraliza las reglas).
-- PDF del lado servidor o con `@react-pdf/renderer`; CFDI 4.0 vía PAC para la fase Facturado.
+- Las fichas de cotización y OT se imprimen / guardan en PDF con el diálogo del navegador (`Generar PDF / Imprimir`). Para PDF automático: `@react-pdf/renderer`. CFDI 4.0 vía PAC para la fase Facturado.
+- Completa `src/config.js` con razón social, RFC y teléfono de NORT Publicidad.
 - Archivos grandes (AI, CDR, PDF pesados) en almacenamiento de objetos (S3/Supabase Storage); hoy solo se guarda la referencia.
 
 `tools/build-artifact.mjs` solo se usa para generar la vista previa de un solo archivo HTML.

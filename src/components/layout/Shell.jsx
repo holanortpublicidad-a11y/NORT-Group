@@ -50,15 +50,15 @@ const THEME_LABEL = { system: 'Tema del sistema', light: 'Modo claro', dark: 'Mo
 function Brand() {
   return (
     <div className="flex items-center gap-2.5">
-      {/* Marca: una "cota" (línea de dimensión) */}
+      {/* Marca: N con flecha al norte */}
       <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true" className="shrink-0">
         <rect x="1" y="1" width="28" height="28" rx="6" fill="rgb(var(--accent))" />
-        <path d="M7 11v8M23 11v8M7 15h16" stroke="rgb(var(--accent-ink))" strokeWidth="2" strokeLinecap="round" fill="none" />
-        <path d="M10 13l-3 2 3 2M20 13l3 2-3 2" stroke="rgb(var(--accent-ink))" strokeWidth="1.6" fill="none" strokeLinejoin="round" />
+        <path d="M9 22V9l12 13V9" stroke="rgb(var(--accent-ink))" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        <path d="M18 7.5l3-3 3 3" stroke="rgb(var(--accent-ink))" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
       </svg>
       <div className="leading-none">
-        <div className="font-display text-[20px] font-bold tracking-wide">COTA ERP</div>
-        <div className="mt-0.5 text-[10.5px] uppercase tracking-[0.1em] text-ink-3">Señalética · Letras 3D</div>
+        <div className="font-display text-[21px] font-bold tracking-[0.12em]">NORT</div>
+        <div className="mt-0.5 text-[10.5px] uppercase tracking-[0.1em] text-ink-3">Publicidad · ERP</div>
       </div>
     </div>
   );

@@ -7,16 +7,16 @@ import { PHASES } from '../lib/sla.js';
 
 // ── Usuarios (incluye vendedores con comisión y meta) ────────────────────────
 export const USERS = [
-  { id: 'u-admin', name: 'Ulises López', role: 'admin', email: 'direccion@cota.mx' },
-  { id: 'u-mariana', name: 'Mariana Ortiz', role: 'ventas', email: 'mariana@cota.mx', commissionPct: 5, monthlyGoal: 350000 },
-  { id: 'u-jorge', name: 'Jorge Salcedo', role: 'ventas', email: 'jorge@cota.mx', commissionPct: 4.5, monthlyGoal: 280000 },
-  { id: 'u-daniela', name: 'Daniela Ruiz', role: 'diseno', email: 'daniela@cota.mx' },
-  { id: 'u-ivan', name: 'Iván Chávez', role: 'diseno', email: 'ivan@cota.mx' },
-  { id: 'u-roberto', name: 'Roberto Méndez', role: 'produccion', email: 'produccion@cota.mx' },
-  { id: 'u-luis', name: 'Luis Arriaga', role: 'instalador', email: 'luis@cota.mx' },
-  { id: 'u-pedro', name: 'Pedro Sáenz', role: 'instalador', email: 'pedro@cota.mx' },
-  { id: 'u-karla', name: 'Karla Villalobos', role: 'contabilidad', email: 'facturacion@cota.mx' },
-  { id: 'u-andres', name: 'Andrés Nava', role: 'compras', email: 'compras@cota.mx' },
+  { id: 'u-admin', name: 'Ulises López', role: 'admin', email: 'direccion@ejemplo.mx' },
+  { id: 'u-mariana', name: 'Mariana Ortiz', role: 'ventas', email: 'mariana@ejemplo.mx', commissionPct: 5, monthlyGoal: 350000 },
+  { id: 'u-jorge', name: 'Jorge Salcedo', role: 'ventas', email: 'jorge@ejemplo.mx', commissionPct: 4.5, monthlyGoal: 280000 },
+  { id: 'u-daniela', name: 'Daniela Ruiz', role: 'diseno', email: 'daniela@ejemplo.mx' },
+  { id: 'u-ivan', name: 'Iván Chávez', role: 'diseno', email: 'ivan@ejemplo.mx' },
+  { id: 'u-roberto', name: 'Roberto Méndez', role: 'produccion', email: 'produccion@ejemplo.mx' },
+  { id: 'u-luis', name: 'Luis Arriaga', role: 'instalador', email: 'luis@ejemplo.mx' },
+  { id: 'u-pedro', name: 'Pedro Sáenz', role: 'instalador', email: 'pedro@ejemplo.mx' },
+  { id: 'u-karla', name: 'Karla Villalobos', role: 'contabilidad', email: 'facturacion@ejemplo.mx' },
+  { id: 'u-andres', name: 'Andrés Nava', role: 'compras', email: 'compras@ejemplo.mx' },
 ];
 
 export const TEAMS = ['Herrería', 'Acrílicos y router CNC', 'Impresión digital', 'Electricidad / LED', 'Pintura automotriz', 'Rotulación y vinil'];
@@ -183,7 +183,7 @@ export function seed(now) {
           baseId: 'rig-acm3',
           elements: [
             newElement({ name: 'Letras “POLLO SINALOA”', modality: 'letras', light: 'directa', text: 'POLLO SINALOA', letterCount: 12, width: 3.8, height: 0.45, cantoSize: '4', cantoColor: 'Rojo', frenteMat: 'acrilico', frenteColor: 'Blanco lechoso', silvatrim: true, silvatrimColor: 'Rojo', rotId: 'vin-corte-tras', rotCoverage: 100 }),
-            newElement({ name: 'Icono pollo a contorno', modality: 'caja_contorno', light: 'directa', width: 1.1, height: 1.1, cantoSize: '4', cantoColor: 'Amarillo', frenteMat: 'acrilico', frenteColor: 'Traslúcido impreso', silvatrim: true, silvatrimColor: 'Amarillo', rotId: 'vin-impreso', rotCoverage: 100 }),
+            newElement({ name: 'Icono pollo a contorno', modality: 'caja_contorno', light: 'directa', width: 1.1, height: 1.1, cantoSize: '4', cantoColor: 'Amarillo', frenteMat: 'acrilico', frenteColor: 'Traslúcido impreso', silvatrim: true, silvatrimColor: 'Amarillo', rotId: 'vin-impreso-trans', rotCoverage: 100 }),
           ],
           ledId: 'led-3',
           ledQty: 120,
