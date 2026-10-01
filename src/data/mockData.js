@@ -112,7 +112,7 @@ function line(family, params = {}, extra = {}) {
 
 export function seed(now) {
   const year = new Date(now).getFullYear();
-  const NOTE = 'Precios más IVA. Incluye traslado dentro de Cd. Juárez. Permisos municipales no incluidos.';
+  const NOTE = 'Incluye traslado dentro de Cd. Juárez. Permisos municipales no incluidos.';
   const Q = [
     {
       n: 126, clientId: 'c-paso', sellerId: 'u-jorge', title: 'Vitrinas con microperforado', ago: 34, lead: 8,
@@ -160,7 +160,7 @@ export function seed(now) {
         line('f1', { modality: 'letras', light: 'directa', text: 'MÉDANOS', letterCount: 7, width: 2.1, height: 0.3, rotId: 'vin-corte-tras', rotCoverage: 100 }, { install: { surfaceId: 'block', heightM: 3.5 } }),
         line('f5', { substrate: 'rigido', materialId: 'rig-acr-cristal', width: 0.3, height: 0.4, qty: 2, graphic: 'impreso', mounting: 'pernos' }, { label: 'Baños y horario', install: { surfaceId: 'tablaroca', heightM: 1.6 } }),
       ],
-      order: { phase: 'ventas', teams: [], installerIds: [] },
+      order: { phase: 'sin_liberar', teams: [], installerIds: [] },
     },
     {
       n: 139, clientId: 'c-sonrisa', sellerId: 'u-mariana', title: 'Caja contorno y papelería', ago: 2, lead: 12, status: 'Enviada',
@@ -217,6 +217,7 @@ export function seed(now) {
       items: q.items,
       attachments: [],
       notes: NOTE,
+      ivaEnabled: true,
       orderId: null,
     };
     quotes.push(quote);
@@ -235,8 +236,18 @@ export function seed(now) {
       const at = o.createdAt + ((spanDays * k) / target) * DAY;
       history.push({ phase: PHASES[k].id, at: Math.min(at, now - 3_600_000), by: 'u-admin' });
     }
+    const released = spec.phase !== 'sin_liberar';
+    const total = o.economics.subtotal * (1 + CATALOG.rules.params.iva);
+    const payments = [];
+    if (released) payments.push({ id: `pay-${o.id}-1`, at: o.createdAt, amount: Math.round(total * 0.5 * 100) / 100, method: 'Transferencia', note: 'Anticipo 50%', by: quote.sellerId });
+    if (spec.phase === 'facturado') payments.push({ id: `pay-${o.id}-2`, at: o.createdAt + (spec.closedAfter ?? 1) * DAY, amount: Math.round(total * 0.5 * 100) / 100, method: 'Transferencia', note: 'Liquidación', by: 'u-karla' });
     return {
       ...o,
+      releasedAt: released ? o.createdAt : null,
+      release: released
+        ? { contractSent: true, contractFile: null, signedConfirmed: true, contractFolio: `CTO-${o.id.slice(3)}`, filesShared: true, sharedPath: `\\\\NORT-SRV\\Proyectos\\${o.id}` }
+        : o.release,
+      payments,
       phase: spec.phase,
       designerId: spec.designerId ?? null,
       teams: spec.teams,

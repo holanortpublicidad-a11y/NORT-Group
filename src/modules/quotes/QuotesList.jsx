@@ -56,7 +56,7 @@ export default function QuotesList() {
                   <th className="px-4 py-2.5 font-medium">Cliente · proyecto</th>
                   <th className="px-4 py-2.5 font-medium">Vendedor</th>
                   <th className="px-4 py-2.5 font-medium">Fecha</th>
-                  <th className="px-4 py-2.5 text-right font-medium">Total c/IVA</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Total</th>
                   <th className="px-4 py-2.5 font-medium">Estatus</th>
                   <th className="px-4 py-2.5 font-medium">OT</th>
                 </tr>

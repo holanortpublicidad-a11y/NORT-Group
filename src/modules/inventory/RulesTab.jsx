@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { useApp } from '../../store/AppStore.jsx';
-import { Button, Card, Field, IconButton, Input, NumberInput } from '../../components/ui.jsx';
+import { Button, Card, Field, IconButton, Input, NumberInput, Segmented } from '../../components/ui.jsx';
 import { storageUsageKB } from '../../lib/storage.js';
+import { DEFAULT_SETTINGS } from '../../data/legal.js';
+import LegalText from '../../components/LegalText.jsx';
 import { uid } from '../../lib/format.js';
 
 const getIn = (obj, path) => path.reduce((o, k) => (o == null ? o : o[k]), obj);
@@ -95,7 +97,74 @@ export function GeneralRules({ editable }) {
         </div>
       </Block>
       <DataBlock />
+      <div className="lg:col-span-2">
+        <LegalBlock />
+      </div>
     </div>
+  );
+}
+
+/** Términos y condiciones + plantilla de contrato. Solo el Administrador edita. */
+function LegalBlock() {
+  const { state, dispatch, role } = useApp();
+  const admin = role === 'admin';
+  const st = state.settings || DEFAULT_SETTINGS;
+  const [tab, setTab] = useState('terms');
+  const [confirm, setConfirm] = useState(false);
+  const key = tab === 'terms' ? 'terms' : 'contract';
+  return (
+    <Block
+      title="Documentos legales"
+      desc={admin ? 'Se incluyen por defecto en todas las cotizaciones y contratos. Solo el Administrador puede editarlos.' : 'Solo lectura: únicamente el Administrador puede editar estos textos.'}
+    >
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="scroll-x no-scrollbar">
+          <Segmented
+            options={[
+              { value: 'terms', label: 'Términos y condiciones' },
+              { value: 'contract', label: 'Contrato de publicidad' },
+            ]}
+            value={tab}
+            onChange={setTab}
+          />
+        </div>
+        {admin &&
+          (confirm ? (
+            <span className="flex items-center gap-2 text-[12.5px]">
+              ¿Volver al texto oficial?
+              <Button size="sm" variant="danger" onClick={() => { dispatch({ type: 'SETTINGS_SET', patch: { [key]: DEFAULT_SETTINGS[key] } }); setConfirm(false); }}>Restablecer</Button>
+              <Button size="sm" variant="ghost" onClick={() => setConfirm(false)}>Cancelar</Button>
+            </span>
+          ) : (
+            <Button size="sm" icon={RotateCcw} onClick={() => setConfirm(true)}>Texto oficial</Button>
+          ))}
+      </div>
+      {admin ? (
+        <>
+          <textarea
+            id={`legal-${key}`}
+            aria-label={tab === 'terms' ? 'Términos y condiciones' : 'Plantilla del contrato'}
+            className="input min-h-[360px] font-mono text-[12px] leading-relaxed"
+            value={st[key]}
+            onChange={(e) => dispatch({ type: 'SETTINGS_SET', patch: { [key]: e.target.value } })}
+          />
+          {tab === 'contract' && (
+            <div className="mt-3 grid-cols-1 grid gap-3 sm:grid-cols-[220px_1fr]">
+              <Field label="Tarifa operativa por falsa salida" htmlFor="legal-fee" hint="Se escribe en el contrato; vacío deja la línea en blanco">
+                <NumberInput id="legal-fee" unit="MXN" step="100" value={st.falseTripFee} onChange={(v) => dispatch({ type: 'SETTINGS_SET', patch: { falseTripFee: v } })} />
+              </Field>
+              <p className="self-end text-[12px] text-ink-3">
+                Marcadores: {'{{cliente}} {{cotizacion}} {{fecha}} {{dia}} {{mes}} {{anio}} {{asesor}} {{objeto}} {{monto}} {{iva_texto}} {{anticipo}} {{anticipo_pct}} {{tarifa_falsa_salida}}'}
+              </p>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="max-h-[420px] overflow-y-auto rounded-md border border-line bg-surface-2/40 p-3">
+          <LegalText text={st[key]} tone="ui" />
+        </div>
+      )}
+    </Block>
   );
 }
 

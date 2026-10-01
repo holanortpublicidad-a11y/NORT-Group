@@ -5,6 +5,7 @@ import { PageHeader, SearchInput, Segmented, cx } from '../../components/ui.jsx'
 import Kanban from './Kanban.jsx';
 import OrdersTable from './OrdersTable.jsx';
 import OrderDetail from './OrderDetail.jsx';
+import { releaseLocks } from './ReleasePanel.jsx';
 import { computeSla, isClosed, phaseName } from '../../lib/sla.js';
 import { canMovePhase } from '../../lib/permissions.js';
 import { fmtDate } from '../../lib/format.js';
@@ -39,14 +40,17 @@ export default function OrdersView({ route }) {
   const [openId, setOpenId] = useState(route.open ?? null);
   const all = useOrderRows();
 
+  const pending = all.filter((r) => r.order.phase === 'sin_liberar');
+  const seePending = ['admin', 'ventas', 'contabilidad'].includes(role);
   const rows = all.filter((r) => {
+    if (r.order.phase === 'sin_liberar') return false; // solo en "Pendientes de liberar"
     const term = q.trim().toLowerCase();
     if (term && ![r.order.id, r.order.title, r.client?.tradeName].join(' ').toLowerCase().includes(term)) return false;
     if (light && r.sla.level !== light) return false;
     if (mine && me && ![r.order.designerId, ...r.order.installerIds].includes(me.id)) return false;
     return true;
   });
-  const active = all.filter((r) => !isClosed(r.order.phase));
+  const active = all.filter((r) => !isClosed(r.order.phase) && r.order.phase !== 'sin_liberar');
   const count = (lvl) => active.filter((r) => r.sla.level === lvl).length;
 
   const move = (id, phase) => {
@@ -67,7 +71,7 @@ export default function OrdersView({ route }) {
       <PageHeader
         eyebrow="Módulo 3"
         title="Órdenes de trabajo"
-        subtitle="Ventas → Diseño → Producción → Fabricación → Instalación → Concluido → Facturado"
+        subtitle="Sin liberar → Diseño → Producción → Fabricación → Instalación → Concluido → Facturado"
         actions={
           <Segmented
             value={view}
@@ -133,6 +137,37 @@ export default function OrdersView({ route }) {
           Solo mis asignaciones
         </label>
       </div>
+
+      {seePending && pending.length > 0 && (
+        <section className="mb-4 rounded-xl border border-warn/40 bg-warn/5 p-3">
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="font-display text-lg font-semibold tracking-wide">Pendientes de liberar · {pending.length}</h2>
+            <span className="text-[12px] text-ink-3">No son visibles para Diseño, Producción ni Instalación hasta liberarse</span>
+          </div>
+          <ul className="grid-cols-1 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {pending.map((r) => {
+              const L = releaseLocks(r.order);
+              return (
+                <li key={r.order.id}>
+                  <button type="button" onClick={() => setOpenId(r.order.id)} className="flex w-full flex-col gap-1.5 rounded-lg border border-line bg-surface p-3 text-left transition hover:border-ink-3/60">
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-[12px] text-ink-2">{r.order.id}</span>
+                      <span className="text-[11.5px] text-ink-3">aprobada {fmtDate(r.order.createdAt)}</span>
+                    </span>
+                    <span className="font-medium leading-snug">
+                      {r.client?.tradeName} · {r.order.title}
+                    </span>
+                    <span className="flex flex-wrap gap-1.5 text-[11.5px]">
+                      <span className={L.contract ? 'text-ok' : 'text-ink-3'}>{L.contract ? '✓' : '○'} Contrato firmado</span>
+                      <span className={L.files ? 'text-ok' : 'text-ink-3'}>{L.files ? '✓' : '○'} Archivos en carpeta</span>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       {view === 'kanban' ? (
         <Kanban rows={rows} role={role} onOpen={setOpenId} onMove={move} />

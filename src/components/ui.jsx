@@ -236,7 +236,7 @@ export function SlaPill({ sla, compact }) {
   const meta = SLA_META[sla.level];
   return (
     <Badge tone={meta.tone} dot>
-      {compact ? meta.label : `${meta.label} · ${Math.round(sla.pct * 100)}%`}
+      {compact || sla.level === 'pending' ? (sla.level === 'pending' ? 'Semáforo detenido' : meta.label) : `${meta.label} · ${Math.round(sla.pct * 100)}%`}
     </Badge>
   );
 }
@@ -311,4 +311,27 @@ export function Check({ id, label, checked, onChange, disabled, hint }) {
 export function PrintPortal({ children }) {
   if (typeof document === 'undefined') return null;
   return createPortal(<div className="print-only">{children}</div>, document.body);
+}
+
+/** Interruptor accesible (role="switch"). */
+export function Switch({ id, checked, onChange, label, hint, disabled }) {
+  return (
+    <label htmlFor={id} className={cx('flex items-center justify-between gap-3', disabled ? 'opacity-60' : 'cursor-pointer')}>
+      <span className="min-w-0">
+        <span className="block text-[13.5px] font-medium text-ink">{label}</span>
+        {hint && <span className="block text-[11.5px] text-ink-3">{hint}</span>}
+      </span>
+      <button
+        id={id}
+        type="button"
+        role="switch"
+        aria-checked={!!checked}
+        disabled={disabled}
+        onClick={() => onChange(!checked)}
+        className={cx('relative h-6 w-11 shrink-0 rounded-full transition', checked ? 'bg-accent' : 'bg-line')}
+      >
+        <span className={cx('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all', checked ? 'left-[22px]' : 'left-0.5')} />
+      </button>
+    </label>
+  );
 }

@@ -56,7 +56,9 @@ export function calcQuote(quote, catalog) {
   const lines = quote.items.map((item) => ({ item, calc: calcLine(item, catalog) }));
   const subtotal = lines.reduce((s, l) => s + l.calc.total, 0);
   const cost = lines.reduce((s, l) => s + l.calc.cost, 0);
-  const iva = subtotal * catalog.rules.params.iva;
+  // Interruptor "Desglosar IVA": apagado → IVA $0.00 y total = subtotal
+  const ivaOn = quote.ivaEnabled !== false;
+  const iva = ivaOn ? subtotal * catalog.rules.params.iva : 0;
   const total = subtotal + iva;
   const advance = (total * (Number(quote.advancePct) || 0)) / 100;
   const profit = subtotal - cost;
@@ -67,6 +69,7 @@ export function calcQuote(quote, catalog) {
     profit,
     margin: subtotal > 0 ? (profit / subtotal) * 100 : 0,
     iva,
+    ivaOn,
     total,
     advance,
     balance: total - advance,
@@ -97,3 +100,14 @@ export function stockShortages(quote, catalog) {
 }
 
 export const marginTone = (m, params) => (m < params.marginBad ? 'bad' : m < params.marginWarn ? 'warn' : 'ok');
+
+/** Importes de una OT: el subtotal queda fijo al aprobar; el IVA se puede activar o quitar después. */
+export function orderMoney(order, ivaRate) {
+  const subtotal = order.economics?.subtotal ?? 0;
+  const ivaOn = order.ivaEnabled !== false;
+  const iva = ivaOn ? subtotal * ivaRate : 0;
+  const total = subtotal + iva;
+  const paid = (order.payments || []).reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  const advancePct = order.advancePct ?? 50;
+  return { subtotal, ivaOn, iva, total, paid, balance: total - paid, advancePct, advance: (total * advancePct) / 100 };
+}

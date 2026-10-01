@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowRight, CalendarClock, Lock, Paperclip, Package } from 'lucide-react';
 import { AvatarStack, SlaBar, SlaPill, cx } from '../../components/ui.jsx';
-import { PHASES, phaseIndex } from '../../lib/sla.js';
+import { BOARD_PHASES, PHASES, phaseIndex } from '../../lib/sla.js';
 import { fmtDay, num } from '../../lib/format.js';
 import { canMovePhase } from '../../lib/permissions.js';
 
@@ -83,7 +83,7 @@ export default function Kanban({ rows, role, onOpen, onMove }) {
   return (
     <div className="scroll-x -mx-4 snap-x snap-mandatory px-4 pb-2 md:mx-0 md:snap-none md:px-0">
       <div className="flex gap-3">
-        {PHASES.map((ph) => {
+        {BOARD_PHASES.map((ph) => {
           const list = rows.filter((r) => r.order.phase === ph.id);
           return (
             <section

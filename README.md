@@ -87,6 +87,17 @@ módulo 7 × 1 cm · cable 7 cm · paso 14 cm · columnas a 4″ (10.16 cm) · m
 “Usar N módulos” pasa el total a la cotización (fuentes con W = módulos × 1.2) y guarda la imagen del mapa
 para la OT. Con SVG la silueta es exacta; sin SVG, las letras se aproximan con una tipografía genérica.
 
+## IVA, términos y liberación de OT
+
+- **IVA:** interruptor “Desglosar IVA (16%)” en la cotización y en la OT (sección Cobranza). Apagado → IVA $0.00 y
+  total = subtotal. Se puede cambiar aun con la cotización aprobada: recalcula total, anticipo y saldo por cobrar
+  (`orderMoney()` en `lib/pricing.js`) y se refleja en la vista previa, el resumen de WhatsApp y la ficha de OT.
+- **Términos y condiciones / contrato:** textos oficiales en `src/data/legal.js`; se guardan en `settings` y solo el
+  Administrador los edita (Inventario → Generales → Documentos legales). En la impresión van en una segunda hoja.
+- **Liberación:** al aprobar, la OT queda en `sin_liberar` y no aparece en los tableros operativos. Para liberarla
+  (Ventas/Administrador) se requieren dos candados: contrato firmado (archivo adjunto o folio) y confirmación de
+  archivos en la carpeta compartida. Al liberar pasa a Diseño y el semáforo corre en días hábiles (lun–vie).
+
 ## Prospectos y clientes
 
 Cada contacto tiene `type: 'prospecto' | 'cliente'`. Desde el cotizador se registra un prospecto sin salir del

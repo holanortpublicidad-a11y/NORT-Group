@@ -1,4 +1,4 @@
-import { DAY } from './format.js';
+import { addBusinessDays } from './format.js';
 import { calcLine, calcQuote } from './pricing.js';
 
 export const quoteFolio = (n, year) => `COT-${year}-${String(n).padStart(4, '0')}`;
@@ -36,8 +36,14 @@ export function buildOrderFromQuote({ quote, client, catalog, seq, now, byUserId
     sellerId: quote.sellerId,
     title: quote.title || lines[0]?.summary || 'Orden de trabajo',
     createdAt: now,
-    dueDate: now + (Number(quote.leadDays) || 10) * DAY,
-    phase: 'ventas',
+    dueDate: addBusinessDays(now, Number(quote.leadDays) || 15), // provisional; se recalcula al liberar
+    phase: 'sin_liberar', // no entra a Diseño/Producción hasta liberarla
+    releasedAt: null,
+    release: { contractSent: false, contractFile: null, signedConfirmed: false, contractFolio: '', filesShared: false, sharedPath: '' },
+    ivaEnabled: quote.ivaEnabled !== false,
+    advancePct: Number(quote.advancePct) || 50,
+    leadDays: Number(quote.leadDays) || 15,
+    payments: [],
     designerId: null,
     teams: [],
     installerIds: [],
@@ -46,7 +52,7 @@ export function buildOrderFromQuote({ quote, client, catalog, seq, now, byUserId
     attachments: [...(quote.attachments || [])],
     economics: { cost: totals.cost, subtotal: totals.subtotal, margin: totals.margin },
     closedAt: null,
-    history: [{ phase: 'ventas', at: now, by: byUserId, note: `Generada al aprobar ${quote.id}` }],
+    history: [{ phase: 'sin_liberar', at: now, by: byUserId, note: `Generada al aprobar ${quote.id}` }],
     notes: [],
   };
 }

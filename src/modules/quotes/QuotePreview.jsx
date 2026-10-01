@@ -5,6 +5,7 @@ import { Button, Modal, PrintPortal, copyText } from '../../components/ui.jsx';
 import { calcQuote } from '../../lib/pricing.js';
 import { DAY, fmtDate, mxn, num } from '../../lib/format.js';
 import { COMPANY, PRINT_ENABLED } from '../../config.js';
+import LegalText from '../../components/LegalText.jsx';
 
 // Especificaciones legibles para el cliente (sin costos internos).
 const qtyOf = (it) => (it.family === 'f4' && it.params.mode === 'stickers' ? it.params.pieces : it.family === 'f6' ? it.params.volume : it.params.qty ?? 1);
@@ -21,10 +22,11 @@ export function quoteAsText(quote, client, seller, catalog) {
     ...lines,
     '',
     `Subtotal: ${mxn(t.subtotal)}`,
-    `IVA ${Math.round(catalog.rules.params.iva * 100)}%: ${mxn(t.iva)}`,
-    `*Total: ${mxn(t.total)}*`,
+    t.ivaOn ? `IVA ${Math.round(catalog.rules.params.iva * 100)}%: ${mxn(t.iva)}` : 'IVA: no aplica (precio sin IVA)',
+    `*Total${t.ivaOn ? '' : ' sin IVA'}: ${mxn(t.total)}*`,
     `Anticipo requerido (${quote.advancePct}%): ${mxn(t.advance)}`,
-    `Entrega estimada: ${quote.leadDays} días naturales a partir del anticipo`,
+    `Entrega estimada: ${quote.leadDays} días hábiles a partir del anticipo y la aprobación del diseño`,
+    'Aplican los términos y condiciones de NORT Publicidad incluidos en la cotización.',
     `Vigencia: ${quote.validityDays} días · Atiende: ${seller?.name ?? ''}`,
   ]
     .filter((l) => l !== null)
@@ -37,6 +39,7 @@ export default function QuotePreview({ open, onClose, quote }) {
   const client = clientById(quote.clientId);
   const seller = userById(quote.sellerId);
   const t = calcQuote(quote, catalog);
+  const terms = state.settings?.terms;
   const text = quoteAsText(quote, client, seller, catalog);
   const phone = (client?.contact.whatsapp || client?.contact.phone || '').replace(/\D/g, '').slice(-10);
   const wa = `https://wa.me/52${phone}?text=${encodeURIComponent(text)}`;
@@ -129,7 +132,7 @@ export default function QuotePreview({ open, onClose, quote }) {
             <div className="max-w-[330px] rounded border border-[#dde1e8] p-3 text-[11.5px]">
               <div className="font-semibold">Condiciones</div>
               <p>
-                Anticipo del <b>{quote.advancePct}%</b> para iniciar. Entrega estimada: <b>{quote.leadDays} días naturales</b> a partir del anticipo y la
+                Anticipo del <b>{quote.advancePct}%</b> para iniciar. Entrega estimada: <b>{quote.leadDays} días hábiles</b> a partir del anticipo y la
                 aprobación del diseño.
               </p>
               <p className="mt-1 text-[#5a6272]">{quote.notes}</p>
@@ -140,11 +143,11 @@ export default function QuotePreview({ open, onClose, quote }) {
                 <dd>{mxn(t.subtotal)}</dd>
               </div>
               <div className="flex justify-between py-0.5">
-                <dt>IVA {Math.round(catalog.rules.params.iva * 100)}%</dt>
-                <dd>{mxn(t.iva)}</dd>
+                <dt>IVA {t.ivaOn ? `${Math.round(catalog.rules.params.iva * 100)}%` : ''}</dt>
+                <dd>{t.ivaOn ? mxn(t.iva) : 'No aplica'}</dd>
               </div>
               <div className="mt-1 flex justify-between border-t-2 border-[#1a1f2b] py-1 text-[14px] font-semibold">
-                <dt>Total</dt>
+                <dt>{t.ivaOn ? 'Total' : 'Total sin IVA'}</dt>
                 <dd>{mxn(t.total)}</dd>
               </div>
               <div className="mt-1 flex justify-between rounded bg-[#eef2ff] px-2 py-1 text-[#1f3fb0]">
@@ -165,6 +168,15 @@ export default function QuotePreview({ open, onClose, quote }) {
             </div>
             <div className="w-48 border-t border-[#1a1f2b] pt-1 text-center text-[#1a1f2b]">Acepto · firma del cliente</div>
           </footer>
+
+          {/* Términos y condiciones oficiales: segunda hoja al imprimir */}
+          <section className="print-break mt-8 border-t-2 border-[#1a1f2b] pt-4">
+            <div className="mb-2 flex items-baseline justify-between">
+              <span className="font-display text-[15px] font-bold tracking-[0.12em]">{COMPANY.name.toUpperCase()}</span>
+              <span className="font-mono text-[11px] text-[#5a6272]">{quote.id} · anexo</span>
+            </div>
+            <LegalText text={terms} compact />
+          </section>
         </article>
   );
 

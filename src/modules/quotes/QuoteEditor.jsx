@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { AlertTriangle, ArrowLeft, ArrowUpRight, CheckCircle2, Eye, Send, UserPlus, Wrench, XCircle } from 'lucide-react';
+import { AlertTriangle, Lock, ArrowLeft, ArrowUpRight, CheckCircle2, Eye, Send, UserPlus, Wrench, XCircle } from 'lucide-react';
 import ProspectForm from '../../components/ProspectForm.jsx';
+import LegalText from '../../components/LegalText.jsx';
 import { useApp } from '../../store/AppStore.jsx';
-import { Badge, Button, Card, Field, Input, Modal, NumberInput, QUOTE_TONE, Select, Textarea } from '../../components/ui.jsx';
+import { Badge, Button, Card, Field, Input, Modal, NumberInput, QUOTE_TONE, Select, Switch, Textarea } from '../../components/ui.jsx';
 import FamilyLineEditor, { AddLineButton, FamilyGrid, FamilyPicker } from './FamilyLineEditor.jsx';
 import Attachments from '../../components/Attachments.jsx';
 import { MarginBadge } from '../../components/inventory-ui.jsx';
@@ -39,6 +40,7 @@ export default function QuoteEditor({ route }) {
   const nextOt = orderFolio(state.counters.order, new Date(now).getFullYear());
   const canApprove = !readOnly && quote.items.length > 0 && t.total > 0 && quote.status !== 'Rechazada';
   const showCosts = canSeeCosts(role);
+  const canIva = ['admin', 'ventas', 'contabilidad'].includes(role);
   const shortages = quote.status === 'Aprobada' ? [] : stockShortages(quote, catalog);
   const addLine = (fid) => {
     save({ items: [...quote.items, newLineItem(fid, catalog)] });
@@ -147,8 +149,8 @@ export default function QuoteEditor({ route }) {
               <Field label="Proyecto" htmlFor="q-title" className="sm:col-span-2 xl:col-span-1">
                 <Input id="q-title" value={quote.title} onChange={(e) => save({ title: e.target.value })} placeholder="Ej. Anuncio luminoso fachada" />
               </Field>
-              <Field label="Tiempo de entrega" htmlFor="q-lead" hint="Días naturales; define el SLA de la OT">
-                <NumberInput id="q-lead" unit="días" step="1" min={1} value={quote.leadDays} onChange={(v) => save({ leadDays: v })} />
+              <Field label="Tiempo de entrega" htmlFor="q-lead" hint="Días hábiles; el semáforo arranca al liberar la OT">
+                <NumberInput id="q-lead" unit="días háb." step="1" min={1} value={quote.leadDays} onChange={(v) => save({ leadDays: v })} />
               </Field>
               <Field label="Anticipo requerido" htmlFor="q-adv">
                 <NumberInput id="q-adv" unit="%" step="5" value={quote.advancePct} onChange={(v) => save({ advancePct: v })} />
@@ -218,9 +220,24 @@ export default function QuoteEditor({ route }) {
           </Card>
 
           <Card className="p-4">
-            <Field label="Notas y condiciones para el cliente" htmlFor="q-notes">
+            <Field label="Notas adicionales para el cliente" htmlFor="q-notes">
               <Textarea id="q-notes" disabled={readOnly} value={quote.notes} onChange={(e) => save({ notes: e.target.value })} />
             </Field>
+          </Card>
+
+          <Card className="p-4">
+            <details>
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+                <span className="flex items-center gap-2">
+                  <Lock size={15} className="text-ink-3" />
+                  <span className="font-medium">Términos y condiciones oficiales</span>
+                </span>
+                <span className="text-[12px] text-ink-3">Se incluyen en todas las cotizaciones · {role === 'admin' ? 'edítalos en Inventario → Generales' : 'solo lectura'}</span>
+              </summary>
+              <div className="mt-3 max-h-80 overflow-y-auto rounded-md border border-line bg-surface-2/40 p-3">
+                <LegalText text={state.settings?.terms} tone="ui" />
+              </div>
+            </details>
           </Card>
         </div>
 
@@ -228,6 +245,17 @@ export default function QuoteEditor({ route }) {
         <aside className="lg:sticky lg:top-6 lg:h-fit">
           <Card className="p-4">
             <div className="eyebrow mb-3">Resumen</div>
+            <div className="mb-3 rounded-md border border-line bg-surface-2/40 px-3 py-2.5">
+              <Switch
+                id="q-iva"
+                label={`Desglosar IVA (${Math.round(catalog.rules.params.iva * 100)}%)`}
+                hint={t.ivaOn ? 'Con IVA: total = subtotal + IVA' : 'Sin IVA: total = subtotal'}
+                checked={t.ivaOn}
+                disabled={!canIva}
+                onChange={(v) => dispatch({ type: 'SET_IVA', quoteId: quote.id, value: v })}
+              />
+              {quote.orderId && <p className="mt-1.5 text-[11.5px] text-ink-3">Cotización aprobada: el cambio también actualiza {quote.orderId} y su saldo.</p>}
+            </div>
             <ul className="mb-3 flex flex-col gap-1.5 text-[12.5px] text-ink-2">
               {t.lines.map(({ item, calc }) => (
                 <li key={item.id} className="flex justify-between gap-3">
@@ -240,7 +268,7 @@ export default function QuoteEditor({ route }) {
               {showCosts && <Line label="Costo de producción" value={mxn(t.cost)} />}
               <Line label="Subtotal (precio al cliente)" value={mxn(t.subtotal)} />
               {showCosts && <Line label="Utilidad del proyecto" value={mxn(t.profit)} />}
-              <Line label={`IVA ${Math.round(catalog.rules.params.iva * 100)}%`} value={mxn(t.iva)} />
+              <Line label={t.ivaOn ? `IVA ${Math.round(catalog.rules.params.iva * 100)}%` : 'IVA'} value={t.ivaOn ? mxn(t.iva) : 'No aplica'} />
             </dl>
             {showCosts && quote.items.length > 0 && (
               <div className="mt-2">
@@ -261,7 +289,7 @@ export default function QuoteEditor({ route }) {
                 <span className="tnum font-mono">{mxn(t.balance)}</span>
               </div>
             </div>
-            <p className="mt-3 text-[12px] text-ink-3">Entrega estimada: {quote.leadDays} días naturales tras el anticipo.</p>
+            <p className="mt-3 text-[12px] text-ink-3">Entrega estimada: {quote.leadDays} días hábiles a partir de la liberación de la OT.</p>
             <div className="mt-4 hidden flex-col gap-2 lg:flex">
               <Button icon={Eye} onClick={() => setPreview(true)}>
                 Vista previa / enviar
@@ -282,7 +310,7 @@ export default function QuoteEditor({ route }) {
         style={{ bottom: 'calc(58px + env(safe-area-inset-bottom, 0px))' }}
       >
         <div>
-          <div className="text-[11px] text-ink-3">Total c/IVA</div>
+          <div className="text-[11px] text-ink-3">{t.ivaOn ? 'Total c/IVA' : 'Total sin IVA'}</div>
           <div className="tnum font-display text-xl font-semibold leading-none">{mxn(t.total)}</div>
         </div>
         <div className="flex gap-2">
@@ -336,10 +364,10 @@ export default function QuoteEditor({ route }) {
             La OT hereda {quote.items.length} renglón(es) con su ficha técnica, lista de materiales, instalación y {(quote.attachments || []).length} archivo(s) de diseño.
           </li>
           <li>
-            Fecha compromiso inicial: <b className="text-ink">{fmtDate(now + quote.leadDays * DAY)}</b> ({quote.leadDays} días). Podrás ajustarla al asignar equipo.
+            La OT queda <b className="text-ink">Sin liberar</b>: no pasa a Diseño ni Producción hasta subir el contrato firmado y confirmar los archivos en la carpeta compartida.
           </li>
           <li>
-            La OT inicia en la fase <b className="text-ink">Ventas</b> hasta confirmar el anticipo de <b className="text-ink">{mxn(t.advance)}</b>.
+            Al liberarla arranca el semáforo: <b className="text-ink">{quote.leadDays} días hábiles</b>. Anticipo requerido: <b className="text-ink">{mxn(t.advance)}</b> ({t.ivaOn ? 'con IVA' : 'sin IVA'}).
           </li>
           <li>Se descuenta del inventario el material de insumos con stock controlado{shortages.length ? ` (${shortages.length} con faltante)` : ''}.</li>
           {client?.type === 'prospecto' && (

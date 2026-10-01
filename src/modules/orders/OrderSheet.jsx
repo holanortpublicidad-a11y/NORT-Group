@@ -3,12 +3,14 @@ import { Copy, MessageCircle, Printer } from 'lucide-react';
 import { useApp } from '../../store/AppStore.jsx';
 import { Button, Modal, PrintPortal, copyText } from '../../components/ui.jsx';
 import { SLA_META, computeSla, phaseName } from '../../lib/sla.js';
-import { fmtDate, fmtDateTime, num } from '../../lib/format.js';
+import { fmtDate, fmtDateTime, mxn, num } from '../../lib/format.js';
+import { orderMoney } from '../../lib/pricing.js';
 import { unitLabel } from '../../data/inventory.js';
 import { COMPANY, PRINT_ENABLED } from '../../config.js';
 
 /** Resumen de la OT en texto plano con formato de WhatsApp (*negritas*). */
-export function orderAsText(order, { client, now, userById }) {
+export function orderAsText(order, { client, now, userById, ivaRate = 0.16 }) {
+  const m = orderMoney(order, ivaRate);
   const sla = computeSla(order, now);
   const people = [userById(order.designerId)?.name && `Diseño: ${userById(order.designerId).name}`, order.installerIds.length && `Instalan: ${order.installerIds.map((id) => userById(id)?.name).join(', ')}`].filter(Boolean);
   const lines = order.lines.flatMap((l, i) => [
@@ -26,16 +28,24 @@ export function orderAsText(order, { client, now, userById }) {
     '',
     ...lines,
     order.teams.length ? `\nEquipos: ${order.teams.join(', ')}` : '',
+    '',
+    `Subtotal: ${mxn(m.subtotal)}`,
+    m.ivaOn ? `IVA ${Math.round(ivaRate * 100)}%: ${mxn(m.iva)}` : 'IVA: no aplica (sin IVA)',
+    `*Total${m.ivaOn ? '' : ' sin IVA'}: ${mxn(m.total)}*`,
+    `Cobrado: ${mxn(m.paid)} · *Saldo por cobrar: ${mxn(Math.max(0, m.balance))}*`,
   ]
     .filter((x) => x !== '')
     .join('\n');
 }
 
 export default function OrderSheet({ order, onClose }) {
-  const { now, clientById, userById, notify } = useApp();
+  const { state, now, clientById, userById, notify } = useApp();
+  const ivaRate = state.catalog.rules.params.iva;
+  const m = orderMoney(order, ivaRate);
+  const [withMoney, setWithMoney] = React.useState(true);
   const client = clientById(order.clientId);
   const sla = computeSla(order, now);
-  const text = orderAsText(order, { client, now, userById });
+  const text = orderAsText(order, { client, now, userById, ivaRate });
   const wa = `https://wa.me/?text=${encodeURIComponent(text)}`;
   const designer = userById(order.designerId)?.name;
   const installers = order.installerIds.map((id) => userById(id)?.name).filter(Boolean);
@@ -135,6 +145,18 @@ export default function OrderSheet({ order, onClose }) {
             </section>
           ))}
 
+          {withMoney && (
+            <section className="mb-4 flex justify-end break-inside-avoid">
+              <dl className="w-[280px] font-mono text-[12px]">
+                <div className="flex justify-between py-0.5"><dt>Subtotal</dt><dd>{mxn(m.subtotal)}</dd></div>
+                <div className="flex justify-between py-0.5"><dt>IVA {m.ivaOn ? `${Math.round(ivaRate * 100)}%` : ''}</dt><dd>{m.ivaOn ? mxn(m.iva) : 'No aplica'}</dd></div>
+                <div className="flex justify-between border-t-2 border-[#1a1f2b] py-1 text-[13px] font-semibold"><dt>{m.ivaOn ? 'Total' : 'Total sin IVA'}</dt><dd>{mxn(m.total)}</dd></div>
+                <div className="flex justify-between py-0.5 text-[#167a45]"><dt>Cobrado</dt><dd>{mxn(m.paid)}</dd></div>
+                <div className="flex justify-between rounded bg-[#fdecec] px-2 py-1 font-semibold text-[#b42318]"><dt>Saldo por cobrar</dt><dd>{mxn(Math.max(0, m.balance))}</dd></div>
+              </dl>
+            </section>
+          )}
+
           {order.notes?.length > 0 && (
             <section className="mb-4">
               <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#7a8292]">Bitácora</div>
@@ -162,9 +184,13 @@ export default function OrderSheet({ order, onClose }) {
       onClose={onClose}
       size="lg"
       title={`Ficha de ${order.id}`}
-      subtitle="Hoja de producción e instalación, sin precios"
+      subtitle={withMoney ? 'Hoja de producción e instalación con importes y saldo' : 'Hoja de producción e instalación, sin precios'}
       footer={
         <>
+          <label htmlFor="sheet-money" className="mr-auto flex items-center gap-2 text-[12.5px] text-ink-2">
+            <input id="sheet-money" type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={withMoney} onChange={(e) => setWithMoney(e.target.checked)} />
+            Incluir importes y saldo
+          </label>
           <Button icon={Copy} onClick={() => copyText(text, (ok) => notify(ok ? 'Resumen copiado: pégalo en WhatsApp' : 'No se pudo copiar; selecciona el texto', ok ? 'ok' : 'bad'))}>
             Copiar resumen para WhatsApp
           </Button>

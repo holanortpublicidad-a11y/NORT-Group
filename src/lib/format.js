@@ -33,3 +33,16 @@ export const initials = (name = '') =>
 export const uid = (p = 'id') => `${p}-${Math.random().toString(36).slice(2, 9)}`;
 
 export const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
+
+/** Suma días hábiles (lunes a viernes) y deja la hora a las 18:00 (cierre de taller). */
+export function addBusinessDays(ts, days) {
+  const d = new Date(ts);
+  let left = Math.max(0, Math.round(Number(days) || 0));
+  while (left > 0) {
+    d.setDate(d.getDate() + 1);
+    const wd = d.getDay();
+    if (wd !== 0 && wd !== 6) left--;
+  }
+  d.setHours(18, 0, 0, 0);
+  return d.getTime();
+}

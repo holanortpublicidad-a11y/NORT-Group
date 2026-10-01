@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, ClipboardList, Copy, ExternalLink, FileText, MapPin, MessageCircle, Phone, Send } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Rocket, Check, ClipboardList, Copy, ExternalLink, FileText, MapPin, MessageCircle, Phone, Send } from 'lucide-react';
 import { useApp } from '../../store/AppStore.jsx';
 import { Avatar, Badge, Button, Field, Input, Select, Sheet, SlaBar, SlaPill, copyText, cx } from '../../components/ui.jsx';
 import { PHASES, computeSla, phaseIndex, phaseName } from '../../lib/sla.js';
@@ -7,6 +7,8 @@ import { fmtDate, fmtDateTime, fromInputDate, mxn, num, toInputDate } from '../.
 import { canMovePhase, canSeeCosts, roleName } from '../../lib/permissions.js';
 import Attachments from '../../components/Attachments.jsx';
 import OrderSheet, { orderAsText } from './OrderSheet.jsx';
+import ReleasePanel, { releaseLocks } from './ReleasePanel.jsx';
+import BillingPanel from './BillingPanel.jsx';
 import { unitLabel } from '../../data/inventory.js';
 import { TEAMS } from '../../data/mockData.js';
 
@@ -93,7 +95,7 @@ export default function OrderDetail({ id, onClose }) {
           <Badge tone="accent">{phaseName(order.phase)}</Badge>
           <SlaPill sla={sla} />
           <span className="flex basis-full gap-2 pt-1 sm:basis-auto sm:pt-0">
-            <Button size="sm" icon={MessageCircle} onClick={() => copyText(orderAsText(order, { client, now, userById }), (ok) => notify(ok ? 'Resumen copiado para WhatsApp' : 'No se pudo copiar', ok ? 'ok' : 'bad'))}>
+            <Button size="sm" icon={MessageCircle} onClick={() => copyText(orderAsText(order, { client, now, userById, ivaRate: state.catalog.rules.params.iva }), (ok) => notify(ok ? 'Resumen copiado para WhatsApp' : 'No se pudo copiar', ok ? 'ok' : 'bad'))}>
               Copiar resumen
             </Button>
             <Button size="sm" icon={ClipboardList} onClick={() => setSheet(true)}>
@@ -103,8 +105,16 @@ export default function OrderDetail({ id, onClose }) {
         </div>
       }
       footer={
+        order.phase === 'sin_liberar' ? (
+          <div className="flex w-full flex-wrap items-center justify-between gap-2">
+            <span className="text-[12.5px] text-ink-3">{releaseLocks(order).ok ? 'Candados completos' : 'Completa los dos candados para liberar'}</span>
+            <Button variant="primary" icon={Rocket} disabled={!releaseLocks(order).ok || !['admin', 'ventas'].includes(role)} onClick={() => dispatch({ type: 'RELEASE_ORDER', id: order.id })}>
+              Liberar orden de trabajo
+            </Button>
+          </div>
+        ) : (
         <div className="flex w-full flex-wrap items-center justify-between gap-2">
-          {prev ? (
+          {prev && prev.id !== 'sin_liberar' ? (
             <Button size="sm" variant="ghost" icon={ArrowLeft} disabled={!movable} onClick={() => move(prev.id)}>
               Regresar a {prev.name}
             </Button>
@@ -117,6 +127,7 @@ export default function OrderDetail({ id, onClose }) {
             </Button>
           )}
         </div>
+        )
       }
     >
       {/* Flujo de fases */}
@@ -141,11 +152,14 @@ export default function OrderDetail({ id, onClose }) {
         </ol>
       </div>
 
+      {order.phase === 'sin_liberar' && <ReleasePanel order={order} />}
+      {['admin', 'ventas', 'contabilidad'].includes(role) && <BillingPanel order={order} />}
+
       <Section title="Tiempo de entrega (SLA)">
         <div className="grid grid-cols-3 gap-3 text-[13px]">
           <div>
-            <div className="text-ink-3">Inicio</div>
-            <div className="tnum">{fmtDate(order.createdAt)}</div>
+            <div className="text-ink-3">{order.releasedAt ? 'Liberada' : 'Aprobada'}</div>
+            <div className="tnum">{fmtDate(order.releasedAt ?? order.createdAt)}</div>
           </div>
           <div>
             <div className="text-ink-3">Compromiso</div>

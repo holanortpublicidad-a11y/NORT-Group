@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useReducer, useState } from 'react';
 import { CATALOG, CLIENTS, USERS, seed } from '../data/mockData.js';
-import { DAY, uid } from '../lib/format.js';
+import { DAY, addBusinessDays, uid } from '../lib/format.js';
+import { DEFAULT_SETTINGS } from '../data/legal.js';
 import { buildOrderFromQuote, quoteFolio } from '../lib/orders.js';
 import { materialNeeds } from '../lib/pricing.js';
 import { isClosed } from '../lib/sla.js';
@@ -20,6 +21,7 @@ function freshData(clock) {
     orders: s.orders,
     counters: { quote: s.nextQuote, order: s.nextOrder },
     movements: [],
+    settings: { ...DEFAULT_SETTINGS },
   };
 }
 
@@ -67,7 +69,25 @@ function migrate(saved) {
     type: c.type ?? 'cliente',
     contact: { whatsapp: c.contact?.phone ?? '', ...c.contact },
   }));
-  return { ...saved, catalog: { items, rules }, quotes, clients };
+  // OT: fase "Ventas" anterior → "Sin liberar"; las demás se consideran liberadas
+  const orders = (saved.orders ?? []).map((o) => {
+    const q = quotes.find((x) => x.id === o.quoteId);
+    const legacy = o.phase === 'ventas';
+    return {
+      ivaEnabled: q?.ivaEnabled !== false,
+      advancePct: Number(q?.advancePct) || 50,
+      leadDays: Number(q?.leadDays) || 15,
+      payments: [],
+      releasedAt: legacy ? null : o.createdAt,
+      release: legacy
+        ? { contractSent: false, contractFile: null, signedConfirmed: false, contractFolio: '', filesShared: false, sharedPath: '' }
+        : { contractSent: true, contractFile: null, signedConfirmed: true, contractFolio: 'Previo al sistema', filesShared: true, sharedPath: '' },
+      ...o,
+      phase: legacy ? 'sin_liberar' : o.phase,
+      history: (o.history || []).map((h) => (h.phase === 'ventas' ? { ...h, phase: 'sin_liberar' } : h)),
+    };
+  });
+  return { ...saved, catalog: { items, rules }, quotes, clients, orders, settings: { ...DEFAULT_SETTINGS, ...(saved.settings || {}) } };
 }
 
 function init() {
@@ -187,14 +207,15 @@ function reducer(s, a) {
         clientId: a.clientId ?? s.clients[0]?.id,
         sellerId: me?.role === 'ventas' ? me.id : s.users.find((u) => u.role === 'ventas')?.id,
         createdAt: now,
-        leadDays: 10,
+        leadDays: 15,
+        ivaEnabled: true,
         advancePct: s.catalog.rules.params.advancePct,
         validityDays: s.catalog.rules.params.validityDays,
         status: 'Borrador',
         approvedAt: null,
         items: [],
         attachments: [],
-        notes: 'Precios más IVA. Incluye traslado dentro de Cd. Juárez. Permisos municipales no incluidos.',
+        notes: 'Incluye traslado dentro de Cd. Juárez. Permisos municipales no incluidos.',
         orderId: null,
       };
       return { ...s, quotes: [q, ...s.quotes], counters: { ...s.counters, quote: s.counters.quote + 1 }, route: { name: 'quote', id: q.id } };
@@ -239,6 +260,51 @@ function reducer(s, a) {
       };
     }
 
+    // ── IVA: se puede cambiar en la cotización y también después de aprobada (OT) ──
+    case 'SET_IVA': {
+      const order = s.orders.find((o) => o.id === a.orderId || (a.quoteId && o.quoteId === a.quoteId));
+      const quoteId = a.quoteId ?? order?.quoteId;
+      return {
+        ...s,
+        quotes: quoteId ? replace(s.quotes, quoteId, (q) => ({ ...q, ivaEnabled: a.value })) : s.quotes,
+        orders: order ? replace(s.orders, order.id, (o) => ({ ...o, ivaEnabled: a.value, history: [...o.history, { phase: o.phase, at: nowOf(s), by: s.currentUserId, note: a.value ? 'Se agregó IVA' : 'Se quitó IVA' }] })) : s.orders,
+        toasts: toast(s, a.value ? 'IVA 16% agregado; totales y saldo recalculados' : 'Sin IVA; totales y saldo recalculados'),
+      };
+    }
+    case 'ADD_PAYMENT':
+      return {
+        ...s,
+        orders: replace(s.orders, a.id, (o) => ({ ...o, payments: [...(o.payments || []), { id: uid('pay'), at: nowOf(s), by: s.currentUserId, ...a.payment }] })),
+        toasts: toast(s, 'Pago registrado'),
+      };
+    case 'REMOVE_PAYMENT':
+      return { ...s, orders: replace(s.orders, a.id, (o) => ({ ...o, payments: (o.payments || []).filter((p) => p.id !== a.paymentId) })) };
+
+    // ── Liberación de OT ──
+    case 'UPDATE_RELEASE':
+      return { ...s, orders: replace(s.orders, a.id, (o) => ({ ...o, release: { ...o.release, ...a.patch } })) };
+    case 'RELEASE_ORDER': {
+      const now = nowOf(s);
+      return {
+        ...s,
+        orders: replace(s.orders, a.id, (o) => {
+          const r = o.release || {};
+          const ok = (r.contractFile || (r.signedConfirmed && r.contractFolio?.trim())) && r.filesShared;
+          if (o.phase !== 'sin_liberar' || !ok) return o;
+          return {
+            ...o,
+            phase: 'diseno',
+            releasedAt: now,
+            dueDate: addBusinessDays(now, o.leadDays || 15), // SLA en días hábiles desde la liberación
+            history: [...o.history, { phase: 'diseno', at: now, by: s.currentUserId, note: 'OT liberada · inicia el semáforo' }],
+          };
+        }),
+        toasts: toast(s, `${a.id} liberada: ya aparece en Diseño, Producción e Instalación`),
+      };
+    }
+    case 'SETTINGS_SET':
+      return { ...s, settings: { ...s.settings, ...a.patch } };
+
     // ── Órdenes de trabajo ──
     case 'UPDATE_ORDER':
       return { ...s, orders: replace(s.orders, a.id, (o) => ({ ...o, ...a.patch })) };
@@ -248,6 +314,7 @@ function reducer(s, a) {
         ...s,
         orders: replace(s.orders, a.id, (o) => {
           if (o.phase === a.phase) return o;
+          if (o.phase === 'sin_liberar') return o; // solo sale de aquí con RELEASE_ORDER
           const closing = isClosed(a.phase);
           return {
             ...o,
@@ -283,7 +350,7 @@ export function AppProvider({ children }) {
   useEffect(() => {
     const t = setTimeout(() => setStorage(saveState(state)), 400);
     return () => clearTimeout(t);
-  }, [state.users, state.clients, state.catalog, state.quotes, state.orders, state.counters, state.movements]);
+  }, [state.users, state.clients, state.catalog, state.quotes, state.orders, state.counters, state.movements, state.settings]);
 
   const value = useMemo(() => {
     const me = state.users.find((u) => u.id === state.currentUserId);

@@ -130,5 +130,10 @@ fieldset {
   .break-inside-avoid {
     break-inside: avoid;
   }
+  .print-break {
+    break-before: page;
+    border-top: 0 !important;
+    margin-top: 0 !important;
+  }
 }
 

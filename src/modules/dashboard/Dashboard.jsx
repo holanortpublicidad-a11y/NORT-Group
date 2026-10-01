@@ -3,7 +3,7 @@ import { ArrowRight, FilePlus2, Kanban } from 'lucide-react';
 import { useApp } from '../../store/AppStore.jsx';
 import { Badge, Button, Card, PageHeader, SlaBar, SlaPill, cx } from '../../components/ui.jsx';
 import { useOrderRows } from '../orders/OrdersView.jsx';
-import { PHASES, isClosed, phaseName } from '../../lib/sla.js';
+import { BOARD_PHASES as PHASES, isClosed, phaseName } from '../../lib/sla.js';
 import { calcQuote } from '../../lib/pricing.js';
 import { fmtDay, mxn0, num } from '../../lib/format.js';
 import { isLow } from '../inventory/ItemsTab.jsx';
@@ -23,7 +23,8 @@ function Kpi({ label, value, sub, tone }) {
 export default function Dashboard() {
   const { state, dispatch, role, me, now, nav } = useApp();
   const rows = useOrderRows();
-  const active = rows.filter((r) => !isClosed(r.order.phase));
+  const active = rows.filter((r) => !isClosed(r.order.phase) && r.order.phase !== 'sin_liberar');
+  const pendingRelease = rows.filter((r) => r.order.phase === 'sin_liberar');
   const red = active.filter((r) => r.sla.level === 'red');
   const yellow = active.filter((r) => r.sla.level === 'yellow');
 
@@ -79,6 +80,28 @@ export default function Dashboard() {
         <Kpi label={`Vendido en ${month.label}`} value={mxn0(month.sold)} sub={canSeeCosts(role) ? `Margen ${num(month.margin, 1)}% · cotizado ${mxn0(month.quoted)}` : `Cotizado: ${mxn0(month.quoted)} (antes de IVA)`} />
         <Kpi label="Tasa de aprobación" value={`${Math.round(month.rate * 100)}%`} sub={`${month.pending} cotizaciones abiertas`} />
       </div>
+
+      {pendingRelease.length > 0 && ['admin', 'ventas', 'contabilidad'].includes(role) && (
+        <Card className="mt-5 border-warn/40">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
+            <h2 className="font-display text-lg font-semibold tracking-wide">OT pendientes de liberar</h2>
+            <span className="text-[12px] text-ink-3">Contrato firmado + archivos en carpeta compartida</span>
+          </div>
+          <ul className="divide-y divide-line">
+            {pendingRelease.map((r) => (
+              <li key={r.order.id}>
+                <button type="button" onClick={() => nav({ name: 'orders', open: r.order.id })} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-surface-2/60">
+                  <span className="min-w-0">
+                    <span className="font-mono text-[12px] text-ink-3">{r.order.id}</span>
+                    <span className="block truncate font-medium">{r.client?.tradeName} · {r.order.title}</span>
+                  </span>
+                  <Badge tone="warn">Sin liberar</Badge>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <div className="grid-cols-1 mt-5 grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <Card>

@@ -2,7 +2,7 @@ import { DAY } from './format.js';
 
 // Flujo de la Orden de Trabajo. `owner` = roles que pueden avanzar la OT desde esa fase.
 export const PHASES = [
-  { id: 'ventas', name: 'Ventas', hint: 'Anticipo y datos finales', owner: ['ventas'] },
+  { id: 'sin_liberar', name: 'Sin liberar', hint: 'Contrato firmado y archivos en carpeta compartida', owner: ['ventas'] },
   { id: 'diseno', name: 'Diseño', hint: 'Arte, render y plano de fabricación', owner: ['diseno'] },
   { id: 'produccion', name: 'Producción', hint: 'Planeación y compra de material', owner: ['produccion', 'compras'] },
   { id: 'fabricacion', name: 'Fabricación', hint: 'Corte, armado, LED, pintura', owner: ['produccion'] },
@@ -14,6 +14,9 @@ export const PHASES = [
 export const phaseIndex = (id) => PHASES.findIndex((p) => p.id === id);
 export const phaseName = (id) => PHASES.find((p) => p.id === id)?.name ?? id;
 export const isClosed = (phase) => phase === 'concluido' || phase === 'facturado';
+export const isReleased = (o) => o.phase !== 'sin_liberar';
+/** Fases visibles en los tableros operativos (las OT sin liberar solo las ve Ventas). */
+export const BOARD_PHASES = PHASES.filter((p) => p.id !== 'sin_liberar');
 
 /**
  * Semaforización:
@@ -22,7 +25,10 @@ export const isClosed = (phase) => phase === 'concluido' || phase === 'facturado
  *  rojo     > 90 % o fecha compromiso vencida
  */
 export function computeSla(order, now) {
-  const start = order.createdAt;
+  if (order.phase === 'sin_liberar') {
+    return { level: 'pending', pct: 0, msLeft: 0, overdue: false, text: 'El semáforo inicia al liberar la OT' };
+  }
+  const start = order.releasedAt ?? order.createdAt;
   const due = order.dueDate;
   const total = Math.max(due - start, 1);
 
@@ -65,5 +71,6 @@ export const SLA_META = {
   yellow: { label: 'En riesgo', tone: 'warn' },
   red: { label: 'Crítica', tone: 'bad' },
   done: { label: 'Cumplida', tone: 'neutral' },
+  pending: { label: 'Sin liberar', tone: 'neutral' },
   late: { label: 'Cerrada tarde', tone: 'neutral' },
 };

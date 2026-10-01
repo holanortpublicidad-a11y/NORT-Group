@@ -23,7 +23,7 @@ for (const f of walk(path.join(ROOT, 'src')).filter((f) => /\.(jsx?|mjs)$/.test(
 }
 const luSrc = fs.readFileSync(path.join(G, 'react-icons/lu/index.mjs'), 'utf8');
 const has = (n) => luSrc.includes(`function Lu${n} (`) || luSrc.includes(`function Lu${n}(`);
-const ALIAS = { CheckCircle2: 'CircleCheck', XCircle: 'CircleX', Table2: 'Table', Building2: 'Building', FilePlus2: 'FilePlus', MessageCircle: 'MessageSquare', AlertTriangle: 'TriangleAlert', Wand2: 'WandSparkles' };
+const ALIAS = { CheckCircle2: 'CircleCheck', XCircle: 'CircleX', Table2: 'Table', Building2: 'Building', FilePlus2: 'FilePlus', MessageCircle: 'MessageSquare', AlertTriangle: 'TriangleAlert', Wand2: 'WandSparkles', FileSignature: 'FilePenLine' };
 const lines = ["import React from 'react';"];
 const exports = [];
 for (const n of names) {
