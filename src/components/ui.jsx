@@ -335,3 +335,16 @@ export function Switch({ id, checked, onChange, label, hint, disabled }) {
     </label>
   );
 }
+
+/** Abre el diálogo de impresión con el nombre de archivo sugerido (el navegador lo usa al "Guardar como PDF"). */
+export function printDocument(fileName) {
+  const prev = document.title;
+  const restore = () => {
+    document.title = prev;
+    window.removeEventListener('afterprint', restore);
+  };
+  if (fileName) document.title = fileName.replace(/[\\/:*?"<>|]+/g, ' ').trim();
+  window.addEventListener('afterprint', restore);
+  window.print();
+  setTimeout(restore, 60_000);
+}

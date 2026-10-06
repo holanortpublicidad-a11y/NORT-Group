@@ -1,7 +1,7 @@
-import React from 'react';
-import { Copy, MessageCircle, Printer } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { Copy, Download, MessageCircle } from 'lucide-react';
 import { useApp } from '../../store/AppStore.jsx';
-import { Button, Modal, PrintPortal, copyText } from '../../components/ui.jsx';
+import { Button, Modal, PrintPortal, copyText, printDocument } from '../../components/ui.jsx';
 import { calcQuote } from '../../lib/pricing.js';
 import { DAY, fmtDate, mxn, num } from '../../lib/format.js';
 import { COMPANY, PRINT_ENABLED } from '../../config.js';
@@ -9,6 +9,7 @@ import LegalText from '../../components/LegalText.jsx';
 
 // Especificaciones legibles para el cliente (sin costos internos).
 const qtyOf = (it) => (it.family === 'f4' && it.params.mode === 'stickers' ? it.params.pieces : it.family === 'f6' ? it.params.volume : it.params.qty ?? 1);
+const refImages = (calc) => calc.images.filter((im) => (im.kind ?? 'ref') === 'ref' && !/mapa LED|\(SVG\)/.test(im.name || ''));
 const specLines = (calc) => calc.specs.map((sp) => `${sp.label}: ${sp.value}`);
 
 export function quoteAsText(quote, client, seller, catalog) {
@@ -33,7 +34,7 @@ export function quoteAsText(quote, client, seller, catalog) {
     .join('\n');
 }
 
-export default function QuotePreview({ open, onClose, quote }) {
+export default function QuotePreview({ open, onClose, quote, autoPrint }) {
   const { state, clientById, userById, notify } = useApp();
   const { catalog } = state;
   const client = clientById(quote.clientId);
@@ -43,6 +44,16 @@ export default function QuotePreview({ open, onClose, quote }) {
   const text = quoteAsText(quote, client, seller, catalog);
   const phone = (client?.contact.whatsapp || client?.contact.phone || '').replace(/\D/g, '').slice(-10);
   const wa = `https://wa.me/52${phone}?text=${encodeURIComponent(text)}`;
+
+  const fileName = `${quote.id} ${client?.tradeName ?? ''}`.trim();
+  const download = () => printDocument(fileName);
+  // "Descargar PDF" desde el editor abre la vista previa y lanza la descarga directamente
+  useEffect(() => {
+    if (!open || !autoPrint || !PRINT_ENABLED) return undefined;
+    const t = setTimeout(download, 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, autoPrint]);
 
   const doc = (
 <article className="mx-auto min-w-[560px] max-w-[820px] rounded-md bg-white p-8 text-[12.5px] leading-relaxed text-[#1a1f2b] shadow-[0_1px_0_#0001,0_8px_30px_#0000001a]">
@@ -110,11 +121,12 @@ export default function QuotePreview({ open, onClose, quote }) {
                         <li key={l}>{l}</li>
                       ))}
                     </ul>
-                    {calc.images.length > 0 && (
+                    {/* Solo el montaje / logotipo del cliente: el mapa LED y la lectura SVG son internos */}
+                    {refImages(calc).length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-2">
-                        {calc.images.map((im, k) => (
-                          <figure key={k} className="w-[120px]">
-                            <img src={im.data} alt={im.name} className="h-20 w-full rounded border border-[#dde1e8] object-contain" />
+                        {refImages(calc).map((im, k) => (
+                          <figure key={k} className="w-[260px]">
+                            <img src={im.data} alt={im.name} className="h-40 w-full rounded border border-[#dde1e8] object-contain" />
                             <figcaption className="mt-0.5 truncate text-[10px] text-[#7a8292]">{im.name}</figcaption>
                           </figure>
                         ))}
@@ -196,13 +208,18 @@ export default function QuotePreview({ open, onClose, quote }) {
             <MessageCircle size={17} /> Enviar por WhatsApp
           </a>
           {PRINT_ENABLED && (
-            <Button variant="primary" icon={Printer} onClick={() => window.print()}>
-              Imprimir / PDF
+            <Button variant="primary" icon={Download} onClick={download}>
+              Descargar PDF
             </Button>
           )}
         </>
       }
     >
+      {PRINT_ENABLED && (
+        <p className="mb-3 rounded-md border border-line bg-surface-2/50 px-3 py-2 text-[12.5px] text-ink-2">
+          <b className="text-ink">Descargar PDF:</b> en la ventana que se abre elige <b className="text-ink">Destino → Guardar como PDF</b>. El archivo se llamará <span className="font-mono">{fileName}.pdf</span>.
+        </p>
+      )}
       {/* Documento: papel siempre claro */}
       <div className="scroll-x">{doc}</div>
       {PRINT_ENABLED && <PrintPortal>{doc}</PrintPortal>}

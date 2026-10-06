@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Copy, Download, Printer, Send } from 'lucide-react';
 import { useApp } from '../../store/AppStore.jsx';
-import { Button, Modal, PrintPortal, copyText } from '../../components/ui.jsx';
+import { Button, Modal, PrintPortal, copyText, printDocument } from '../../components/ui.jsx';
 import LegalText from '../../components/LegalText.jsx';
 import { DEFAULT_SETTINGS, fillTemplate, longDate } from '../../data/legal.js';
 import { orderMoney } from '../../lib/pricing.js';
@@ -99,7 +99,7 @@ export default function ContractModal({ order, onClose }) {
               <Button icon={Download} onClick={download}>
                 Descargar contrato (.doc)
               </Button>
-              <Button variant="primary" icon={Printer} onClick={() => window.print()}>
+              <Button variant="primary" icon={Printer} onClick={() => printDocument(`Contrato ${order.id}`)}>
                 Imprimir / PDF
               </Button>
             </>

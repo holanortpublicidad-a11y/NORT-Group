@@ -142,6 +142,10 @@ export function migrateF1Params(p, rules) {
   return next;
 }
 
+/** ¿El elemento lleva base/fondo posterior y frente? "No aplica" los excluye del material. */
+export const hasBase = (p, el) => p.baseId !== 'none' && el.base !== 'none';
+export const hasFrente = (el) => el.frenteMat !== 'none';
+
 export const colorOf = (base, custom) => (base === 'Color especial' && custom ? `especial: ${custom}` : base);
 
 export default {
@@ -169,15 +173,16 @@ export default {
       acc.set(k, cur);
     };
 
-    put(ctx.pick(p.baseId, 'Rígidos'), T.face, 'Base posterior');
     for (const { el, g } of T.per) {
       const label = el.name || F1_MODALITIES.find((m) => m.id === el.modality)?.short;
       const size = R.cantoSizes.find((c) => c.id === el.cantoSize) ?? R.cantoSizes[R.cantoSizes.length - 1];
       put(ctx.pick(size.itemId, 'Perfiles y Canales', (i) => /canto/i.test(i.name)), g.edge, `Canto ${size.name}`, `${label}: ${colorOf(el.cantoColor, el.cantoColorCustom).toLowerCase()}`);
+      // Base / fondo y frente pueden ser "No aplica" (p. ej. letras de luz indirecta sin fondo): no se cobra el material
+      if (hasBase(p, el)) put(ctx.pick(p.baseId, 'Rígidos'), g.face, 'Base posterior', label);
       const fm = R.frenteMaterials.find((f) => f.id === el.frenteMat) ?? R.frenteMaterials[0];
-      put(ctx.pick(fm.itemId, 'Rígidos'), g.face, 'Frente', `${label}: ${colorOf(el.frenteColor, el.frenteColorCustom).toLowerCase()}`);
+      if (hasFrente(el)) put(ctx.pick(fm.itemId, 'Rígidos'), g.face, 'Frente', `${label}: ${colorOf(el.frenteColor, el.frenteColorCustom).toLowerCase()}`);
       if (el.silvatrim) put(ctx.pick('per-silva', 'Perfiles y Canales', (i) => /silva|cercha/i.test(i.name)), g.silva, 'Silvatrim / cercha 1"', `${label}: ${String(el.silvatrimColor).toLowerCase()}`);
-      if (el.rotId && n(el.rotCoverage) > 0) put(ctx.find(el.rotId), g.face * (n(el.rotCoverage) / 100), 'Rotulación', `${label}: ${n(el.rotCoverage)}%`);
+      if (hasFrente(el) && el.rotId && n(el.rotCoverage) > 0) put(ctx.find(el.rotId), g.face * (n(el.rotCoverage) / 100), 'Rotulación', `${label}: ${n(el.rotCoverage)}%`);
       if (p.cnc && el.modality !== 'caja_rect') put(ctx.pick('srv-cnc', 'Servicios/Mano de Obra', (i) => /cnc/i.test(i.name)), g.edge * 2, 'Maquinado', label);
       if (p.kit) put(ctx.pick('her-kit', 'Consumibles', (i) => /consumible|torniller/i.test(i.name)), (el.modality === 'letras' ? Math.max(1, Math.ceil((g.fromSvg ? g.pieces : n(el.letterCount)) / 4)) : 1) * g.q, 'Consumibles');
     }
@@ -212,7 +217,8 @@ export default {
           g.fromSvg ? `medido de ${el.svg.name} (${g.pieces} piezas, ${g.holes} calados)` : null,
           F1_LIGHTS.find((l) => l.id === el.light)?.name.toLowerCase(),
           `canto ${size} ${colorOf(el.cantoColor, el.cantoColorCustom).toLowerCase()}`,
-          `frente ${fm?.toLowerCase()} ${colorOf(el.frenteColor, el.frenteColorCustom).toLowerCase()}`,
+          hasFrente(el) ? `frente ${fm?.toLowerCase()} ${colorOf(el.frenteColor, el.frenteColorCustom).toLowerCase()}` : 'sin frente',
+          hasBase(p, el) ? null : 'sin base / fondo',
           el.silvatrim ? `silvatrim ${String(el.silvatrimColor).toLowerCase()}` : 'sin silvatrim',
         ]
           .filter(Boolean)
@@ -230,8 +236,10 @@ export default {
       summary: `${(p.elements || []).map((e) => e.name || F1_MODALITIES.find((m) => m.id === e.modality)?.short).join(' + ') || 'Anuncio'} · ${num(T.face, 2)} m² de cara`,
       images: (p.elements || [])
         .flatMap((e) => [
-          e.image?.data ? { name: e.name, ...e.image } : e.measureMode === 'svg' && e.svg?.preview ? { name: `${e.name} (SVG)`, data: e.svg.preview } : null,
-          p.ledFromMap && e.ledMapPreview ? { name: `${e.name} · mapa LED (${e.ledCount} módulos)`, data: e.ledMapPreview } : null,
+          // kind: 'ref' = montaje/logotipo del cliente (único que sale en la cotización); 'svg' y 'led' son internos (OT)
+          e.image?.data ? { ...e.image, kind: 'ref', name: e.name } : null,
+          e.measureMode === 'svg' && e.svg?.preview ? { kind: 'svg', name: `${e.name} (SVG)`, data: e.svg.preview } : null,
+          p.ledFromMap && e.ledMapPreview ? { kind: 'led', name: `${e.name} · mapa LED (${e.ledCount} módulos)`, data: e.ledMapPreview } : null,
         ])
         .filter(Boolean),
     };

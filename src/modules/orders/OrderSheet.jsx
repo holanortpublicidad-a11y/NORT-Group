@@ -1,7 +1,7 @@
 import React from 'react';
 import { Copy, MessageCircle, Printer } from 'lucide-react';
 import { useApp } from '../../store/AppStore.jsx';
-import { Button, Modal, PrintPortal, copyText } from '../../components/ui.jsx';
+import { Button, Modal, PrintPortal, copyText, printDocument } from '../../components/ui.jsx';
 import { SLA_META, computeSla, phaseName } from '../../lib/sla.js';
 import { fmtDate, fmtDateTime, mxn, num } from '../../lib/format.js';
 import { orderMoney } from '../../lib/pricing.js';
@@ -198,7 +198,7 @@ export default function OrderSheet({ order, onClose }) {
             <MessageCircle size={17} /> Abrir WhatsApp
           </a>
           {PRINT_ENABLED && (
-            <Button variant="primary" icon={Printer} onClick={() => window.print()}>
+            <Button variant="primary" icon={Printer} onClick={() => printDocument(`${order.id} ficha`)}>
               Generar PDF / Imprimir
             </Button>
           )}

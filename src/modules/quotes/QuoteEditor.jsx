@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Lock, ArrowLeft, ArrowUpRight, CheckCircle2, Eye, Send, UserPlus, Wrench, XCircle } from 'lucide-react';
+import { AlertTriangle, Download, Lock, ArrowLeft, ArrowUpRight, CheckCircle2, Eye, Send, UserPlus, Wrench, XCircle } from 'lucide-react';
+import { PRINT_ENABLED } from '../../config.js';
 import ProspectForm from '../../components/ProspectForm.jsx';
 import LegalText from '../../components/LegalText.jsx';
 import { useApp } from '../../store/AppStore.jsx';
@@ -18,7 +19,7 @@ export default function QuoteEditor({ route }) {
   const { state, dispatch, role, nav, now, clientById } = useApp();
   const quote = state.quotes.find((q) => q.id === route.id);
   const [picker, setPicker] = useState(false);
-  const [preview, setPreview] = useState(false);
+  const [preview, setPreview] = useState(false); // false | 'view' | 'pdf'
   const [confirm, setConfirm] = useState(false);
   const [prospect, setProspect] = useState(false);
 
@@ -49,9 +50,14 @@ export default function QuoteEditor({ route }) {
 
   const actions = (
     <>
-      <Button icon={Eye} onClick={() => setPreview(true)}>
+      <Button icon={Eye} onClick={() => setPreview('view')}>
         Vista previa
       </Button>
+      {PRINT_ENABLED && (
+        <Button icon={Download} onClick={() => setPreview('pdf')}>
+          Descargar PDF
+        </Button>
+      )}
       {!readOnly && quote.status === 'Borrador' && (
         <Button icon={Send} onClick={() => dispatch({ type: 'QUOTE_STATUS', id: quote.id, status: 'Enviada' })}>
           Marcar enviada
@@ -291,7 +297,7 @@ export default function QuoteEditor({ route }) {
             </div>
             <p className="mt-3 text-[12px] text-ink-3">Entrega estimada: {quote.leadDays} días hábiles a partir de la liberación de la OT.</p>
             <div className="mt-4 hidden flex-col gap-2 lg:flex">
-              <Button icon={Eye} onClick={() => setPreview(true)}>
+              <Button icon={Eye} onClick={() => setPreview('view')}>
                 Vista previa / enviar
               </Button>
               {canApprove && (
@@ -314,7 +320,7 @@ export default function QuoteEditor({ route }) {
           <div className="tnum font-display text-xl font-semibold leading-none">{mxn(t.total)}</div>
         </div>
         <div className="flex gap-2">
-          <Button size="sm" icon={Eye} onClick={() => setPreview(true)}>
+          <Button size="sm" icon={Eye} onClick={() => setPreview('view')}>
             Ver
           </Button>
           {canApprove && (
@@ -335,7 +341,7 @@ export default function QuoteEditor({ route }) {
           setProspect(false);
         }}
       />
-      <QuotePreview open={preview} onClose={() => setPreview(false)} quote={quote} />
+      <QuotePreview open={!!preview} autoPrint={preview === 'pdf'} onClose={() => setPreview(false)} quote={quote} />
 
       <Modal
         open={confirm}

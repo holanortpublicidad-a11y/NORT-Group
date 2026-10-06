@@ -241,6 +241,7 @@ function ElementCard({ el, index, rules, onChange, onRemove, canRemove, fid }) {
             <ColorField id={k('cc')} label="Color de canto" options={CANTO_COLORS} value={el.cantoColor} custom={el.cantoColorCustom} onChange={({ color, custom }) => set(color != null ? { cantoColor: color } : { cantoColorCustom: custom })} />
             <Field label="Material del frente" htmlFor={k('fm')}>
               <Select id={k('fm')} value={el.frenteMat} onChange={(e) => set({ frenteMat: e.target.value })}>
+                <option value="none">No aplica (sin frente)</option>
                 {rules.f1.frenteMaterials.map((f) => (
                   <option key={f.id} value={f.id}>
                     {f.name}
@@ -248,7 +249,13 @@ function ElementCard({ el, index, rules, onChange, onRemove, canRemove, fid }) {
                 ))}
               </Select>
             </Field>
-            <ColorField id={k('fc')} label="Color del frente / acrílico" options={FRENTE_COLORS} value={el.frenteColor} custom={el.frenteColorCustom} onChange={({ color, custom }) => set(color != null ? { frenteColor: color } : { frenteColorCustom: custom })} />
+            {el.frenteMat !== 'none' && <ColorField id={k('fc')} label="Color del frente / acrílico" options={FRENTE_COLORS} value={el.frenteColor} custom={el.frenteColorCustom} onChange={({ color, custom }) => set(color != null ? { frenteColor: color } : { frenteColorCustom: custom })} />}
+            <Field label="Base / fondo posterior" htmlFor={k('bs')} hint={el.base === 'none' ? 'No se cobra material de base en este elemento' : undefined}>
+              <Select id={k('bs')} value={el.base === 'none' ? 'none' : 'anuncio'} onChange={(e) => set({ base: e.target.value })}>
+                <option value="anuncio">Sí lleva (material del anuncio)</option>
+                <option value="none">No aplica (sin base / fondo)</option>
+              </Select>
+            </Field>
             <Field label='Silvatrim / cercha 1"' htmlFor={k('sv')}>
               <div className="flex flex-col gap-1.5">
                 <Check id={k('sv')} label={`Incluir · ${num(el.silvatrim ? g.silva : elementGeometry({ ...el, silvatrim: true }, rules).silva, 2)} m.l.`} checked={el.silvatrim} onChange={(v) => set({ silvatrim: v })} />
@@ -266,7 +273,7 @@ function ElementCard({ el, index, rules, onChange, onRemove, canRemove, fid }) {
                 )}
               </div>
             </Field>
-            <Field label="Vinil del frente" htmlFor={k('rot')}>
+            {el.frenteMat !== 'none' && <Field label="Vinil del frente" htmlFor={k('rot')}>
               <div className="grid grid-cols-[1fr_96px] gap-1.5">
                 <Select id={k('rot')} value={el.rotId ?? ''} onChange={(e) => set({ rotId: e.target.value || null })}>
                   <option value="">Sin vinil</option>
@@ -276,7 +283,7 @@ function ElementCard({ el, index, rules, onChange, onRemove, canRemove, fid }) {
                 </Select>
                 {el.rotId && <NumberInput id={k('cov')} aria-label="Cobertura" unit="%" step="5" value={el.rotCoverage} onChange={(v) => set({ rotCoverage: v })} />}
               </div>
-            </Field>
+            </Field>}
           </div>
           <ElementImage id={k('img')} image={el.image} onChange={(image) => set({ image })} />
         </div>
@@ -352,8 +359,8 @@ export default function F1Form({ p, set, catalog, fid }) {
           </table>
         </div>
         <div className="mt-3 max-w-sm">
-          <Field label="Base posterior (todos los elementos)" htmlFor={fid('base')}>
-            <ItemSelect id={fid('base')} catalog={catalog} categories={['Rígidos']} value={p.baseId} onChange={(v) => set({ baseId: v })} />
+          <Field label="Material de base / fondo posterior" htmlFor={fid('base')} hint="Cada elemento puede marcar “No aplica” por separado">
+            <ItemSelect id={fid('base')} catalog={catalog} categories={['Rígidos']} noneLabel="No aplica (ningún elemento lleva base)" value={p.baseId === 'none' ? '' : p.baseId} onChange={(v) => set({ baseId: v ?? 'none' })} />
           </Field>
         </div>
       </Section>
