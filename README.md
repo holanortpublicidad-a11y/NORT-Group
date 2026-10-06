@@ -112,3 +112,9 @@ formulario; al aprobar la cotización (y generar la OT) el contacto pasa a `clie
 - Archivos grandes (AI, CDR, PDF pesados) en almacenamiento de objetos (S3/Supabase Storage); hoy solo se guarda la referencia.
 
 `tools/build-artifact.mjs` solo se usa para generar la vista previa de un solo archivo HTML.
+
+## Orden de instalación, Google Maps y Compras
+
+- **Materiales por elemento** (`F1Form.jsx`): un solo selector de base/fondo por elemento; base, canto, frente, vinil y silvatrim aceptan "No aplica" y descuentan el material.
+- **Orden de instalación** (`modules/orders/InstallOrder.jsx`, `lib/install.js`): pestaña propia en cada OT, separada de la orden de fabricación. Lugar con enlace de Google Maps, programación, levantamiento del sitio (muro, eléctrico, permisos, obstáculos, fotos), lista de qué llevar generada según muro/anclaje/altura, pasos en sitio, guía de imprevistos con registro de incidencias y entrega con firma. Hoja imprimible y texto para WhatsApp. Se guarda en `order.installation`.
+- **Compras** (`modules/purchases/Purchases.jsx`, `lib/purchases.js`): suma los materiales de todas las OT abiertas por material, con desglose por proyecto (y vista por proyecto). Al palomear "comprado" la partida deja de sumar y entra al almacén (acción `PURCHASE_SET`, estado `purchases`). Editan Administrador y Compras; Producción y Contabilidad consultan.

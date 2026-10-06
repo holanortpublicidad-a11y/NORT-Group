@@ -1,7 +1,7 @@
 // Persistencia en localStorage. Todo acceso va en try/catch: el almacenamiento puede
 // estar bloqueado (modo privado) o lleno (archivos adjuntos grandes).
 const KEY = 'cota-erp:v2';
-const PERSISTED = ['users', 'clients', 'catalog', 'quotes', 'orders', 'counters', 'movements', 'settings'];
+const PERSISTED = ['users', 'clients', 'catalog', 'quotes', 'orders', 'counters', 'movements', 'settings', 'purchases'];
 
 export function loadState() {
   try {

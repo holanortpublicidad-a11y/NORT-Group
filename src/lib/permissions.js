@@ -17,6 +17,7 @@ export const MODULES = [
   { id: 'orders', name: 'Órdenes de trabajo' },
   { id: 'clients', name: 'Clientes' },
   { id: 'sellers', name: 'Vendedores' },
+  { id: 'purchases', name: 'Compras' },
   { id: 'catalog', name: 'Inventario y precios' },
   { id: 'users', name: 'Usuarios y roles' },
 ];
@@ -26,10 +27,10 @@ export const ACCESS = {
   admin: Object.fromEntries(MODULES.map((m) => [m.id, 'edit'])),
   ventas: { dashboard: 'view', quotes: 'edit', orders: 'edit', clients: 'edit', sellers: 'view', catalog: 'view' },
   diseno: { dashboard: 'view', orders: 'edit', clients: 'view' },
-  produccion: { dashboard: 'view', orders: 'edit', clients: 'view', catalog: 'view' },
+  produccion: { dashboard: 'view', orders: 'edit', clients: 'view', catalog: 'view', purchases: 'view' },
   instalador: { dashboard: 'view', orders: 'edit' },
-  contabilidad: { dashboard: 'view', quotes: 'view', orders: 'edit', clients: 'edit', sellers: 'view' },
-  compras: { dashboard: 'view', orders: 'view', catalog: 'edit' },
+  contabilidad: { dashboard: 'view', quotes: 'view', orders: 'edit', clients: 'edit', sellers: 'view', purchases: 'view' },
+  compras: { dashboard: 'view', orders: 'view', catalog: 'edit', purchases: 'edit' },
 };
 
 export function can(role, moduleId, level = 'view') {

@@ -4,7 +4,7 @@ import { IconButton, cx } from './ui.jsx';
 import { fmtDateTime } from '../lib/format.js';
 import { kb, readFileForStorage } from '../lib/files.js';
 
-export default function Attachments({ files = [], onChange, readOnly, idPrefix = 'att' }) {
+export default function Attachments({ files = [], onChange, readOnly, idPrefix = 'att', label = 'Adjuntar archivos de diseño', hint = 'Arrastra o toca para elegir · PNG, JPG, PDF, AI, CDR · las imágenes se guardan reducidas', accept }) {
   const input = useRef(null);
   const [over, setOver] = useState(false);
   const add = async (list) => {
@@ -32,13 +32,14 @@ export default function Attachments({ files = [], onChange, readOnly, idPrefix =
           )}
         >
           <Upload size={18} />
-          <span className="font-medium">Adjuntar archivos de diseño</span>
-          <span className="text-[11.5px] text-ink-3">Arrastra o toca para elegir · PNG, JPG, PDF, AI, CDR · las imágenes se guardan reducidas</span>
+          <span className="font-medium">{label}</span>
+          <span className="text-[11.5px] text-ink-3">{hint}</span>
           <input
             ref={input}
             id={`${idPrefix}-input`}
             type="file"
             multiple
+            accept={accept}
             className="sr-only"
             onChange={(e) => {
               if (e.target.files?.length) add(e.target.files);

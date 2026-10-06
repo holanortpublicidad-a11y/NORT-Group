@@ -11,6 +11,7 @@ import OrdersView from './modules/orders/OrdersView.jsx';
 import Clients from './modules/clients/Clients.jsx';
 import Sellers from './modules/sellers/Sellers.jsx';
 import Inventory from './modules/inventory/Inventory.jsx';
+import Purchases from './modules/purchases/Purchases.jsx';
 import Users from './modules/users/Users.jsx';
 
 const ROUTES = {
@@ -21,6 +22,7 @@ const ROUTES = {
   clients: { module: 'clients', C: Clients },
   sellers: { module: 'sellers', C: Sellers },
   catalog: { module: 'catalog', C: Inventory },
+  purchases: { module: 'purchases', C: Purchases },
   users: { module: 'users', C: Users },
 };
 

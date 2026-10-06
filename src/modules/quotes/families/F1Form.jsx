@@ -5,7 +5,7 @@ import { Button, Check, Field, IconButton, Input, NumberInput, Select, cx } from
 import { ItemSelect } from '../../../components/inventory-ui.jsx';
 import { CANTO_COLORS, FRENTE_COLORS } from '../../../data/inventory.js';
 import { makeCtx } from '../../../lib/families/index.js';
-import { F1_LIGHTS, F1_MODALITIES, elementGeometry, newElement, psuCombo, signTotals, suggestLeds } from '../../../lib/families/f1-anuncios3d.js';
+import { F1_LIGHTS, F1_MODALITIES, baseIdOf, hasBase, hasCanto, hasFrente, elementGeometry, newElement, psuCombo, signTotals, suggestLeds } from '../../../lib/families/f1-anuncios3d.js';
 import { readFileForStorage } from '../../../lib/files.js';
 import { mxn, num } from '../../../lib/format.js';
 import { Choice, Num, Section, Stat } from './shared.jsx';
@@ -179,7 +179,35 @@ function SvgMeasure({ el, set, k, rules }) {
 }
 const isLetters = (el) => el.modality === 'letras';
 
-function ElementCard({ el, index, rules, onChange, onRemove, canRemove, fid }) {
+/** Renglón de material: nombre a la izquierda, selector(es) a la derecha; atenuado si "No aplica". */
+function MatRow({ label, off, note, children }) {
+  return (
+    <div className="grid-cols-1 grid items-center gap-2 px-3 py-2.5 sm:grid-cols-[170px_1fr]">
+      <div>
+        <div className={cx('text-[13px] font-medium', off && 'text-ink-3')}>{label}</div>
+        <div className="text-[11px] text-ink-3">{off ? 'No lleva · no se cobra' : note}</div>
+      </div>
+      <div className="grid-cols-1 grid gap-2 sm:grid-cols-2 [&>*:only-child]:sm:col-span-1">{children}</div>
+    </div>
+  );
+}
+
+function ColorSelect({ id, label, options, value, custom, onChange }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Select id={id} aria-label={label} value={value} onChange={(e) => onChange({ color: e.target.value })}>
+        {options.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+      </Select>
+      {value === 'Color especial' && <Input id={`${id}-c`} aria-label={`${label} especial`} value={custom} placeholder="Pantone / RAL / muestra" onChange={(e) => onChange({ custom: e.target.value })} />}
+    </div>
+  );
+}
+
+function ElementCard({ el, index, rules, catalog, p, onChange, onRemove, canRemove, fid }) {
   const [open, setOpen] = useState(true);
   const set = (patch) => onChange({ ...el, ...patch });
   const g = elementGeometry(el, rules);
@@ -236,54 +264,63 @@ function ElementCard({ el, index, rules, onChange, onRemove, canRemove, fid }) {
             </>
           )}
 
-          <div className="grid-cols-1 grid gap-3 sm:grid-cols-2">
-            <Choice label="Canto de aluminio · profundidad" id={k('cs')} options={rules.f1.cantoSizes} value={el.cantoSize} onChange={(v) => set({ cantoSize: v })} />
-            <ColorField id={k('cc')} label="Color de canto" options={CANTO_COLORS} value={el.cantoColor} custom={el.cantoColorCustom} onChange={({ color, custom }) => set(color != null ? { cantoColor: color } : { cantoColorCustom: custom })} />
-            <Field label="Material del frente" htmlFor={k('fm')}>
-              <Select id={k('fm')} value={el.frenteMat} onChange={(e) => set({ frenteMat: e.target.value })}>
-                <option value="none">No aplica (sin frente)</option>
-                {rules.f1.frenteMaterials.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            {el.frenteMat !== 'none' && <ColorField id={k('fc')} label="Color del frente / acrílico" options={FRENTE_COLORS} value={el.frenteColor} custom={el.frenteColorCustom} onChange={({ color, custom }) => set(color != null ? { frenteColor: color } : { frenteColorCustom: custom })} />}
-            <Field label="Base / fondo posterior" htmlFor={k('bs')} hint={el.base === 'none' ? 'No se cobra material de base en este elemento' : undefined}>
-              <Select id={k('bs')} value={el.base === 'none' ? 'none' : 'anuncio'} onChange={(e) => set({ base: e.target.value })}>
-                <option value="anuncio">Sí lleva (material del anuncio)</option>
-                <option value="none">No aplica (sin base / fondo)</option>
-              </Select>
-            </Field>
-            <Field label='Silvatrim / cercha 1"' htmlFor={k('sv')}>
-              <div className="flex flex-col gap-1.5">
-                <Check id={k('sv')} label={`Incluir · ${num(el.silvatrim ? g.silva : elementGeometry({ ...el, silvatrim: true }, rules).silva, 2)} m.l.`} checked={el.silvatrim} onChange={(v) => set({ silvatrim: v })} />
-                {el.silvatrim && el.measureMode === 'svg' && el.svg?.ok && (
-                  <Check id={k('svin')} label="También en calados interiores" checked={el.silvaInner !== false} onChange={(v) => set({ silvaInner: v })} />
-                )}
-                {el.silvatrim && (
-                  <Select id={k('svc')} aria-label="Color de silvatrim" value={el.silvatrimColor} onChange={(e) => set({ silvatrimColor: e.target.value })}>
-                    {SILVA_COLORS.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </Select>
-                )}
-              </div>
-            </Field>
-            {el.frenteMat !== 'none' && <Field label="Vinil del frente" htmlFor={k('rot')}>
-              <div className="grid grid-cols-[1fr_96px] gap-1.5">
-                <Select id={k('rot')} value={el.rotId ?? ''} onChange={(e) => set({ rotId: e.target.value || null })}>
-                  <option value="">Sin vinil</option>
+          {/* Materiales: cada uno con su opción "No aplica" (no se cobra ni se descuenta) */}
+          <div>
+            <div className="eyebrow mb-2">Materiales del elemento</div>
+            <div className="flex flex-col divide-y divide-line rounded-lg border border-line">
+              <MatRow label="Base / fondo posterior" off={!hasBase(p, el)}>
+                <Select id={k('bs')} aria-label="Base / fondo posterior" value={baseIdOf(p, el)} onChange={(e) => set({ baseId: e.target.value, base: undefined })}>
+                  <option value="none">No aplica</option>
+                  {catalog.items.filter((i) => i.category === 'Rígidos').map((i) => (
+                    <option key={i.id} value={i.id}>
+                      {i.name}
+                    </option>
+                  ))}
+                </Select>
+              </MatRow>
+              <MatRow label="Canto de aluminio" off={!hasCanto(el)}>
+                <Select id={k('cs')} aria-label="Canto de aluminio" value={el.cantoSize} onChange={(e) => set({ cantoSize: e.target.value })}>
+                  <option value="none">No aplica</option>
+                  {rules.f1.cantoSizes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} de profundidad
+                    </option>
+                  ))}
+                </Select>
+                {hasCanto(el) && <ColorSelect id={k('cc')} label="Color de canto" options={CANTO_COLORS} value={el.cantoColor} custom={el.cantoColorCustom} onChange={({ color, custom }) => set(color != null ? { cantoColor: color } : { cantoColorCustom: custom })} />}
+              </MatRow>
+              <MatRow label="Frente / cara" off={!hasFrente(el)}>
+                <Select id={k('fm')} aria-label="Material del frente" value={el.frenteMat} onChange={(e) => set({ frenteMat: e.target.value })}>
+                  <option value="none">No aplica</option>
+                  {rules.f1.frenteMaterials.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                    </option>
+                  ))}
+                </Select>
+                {hasFrente(el) && <ColorSelect id={k('fc')} label="Color del frente" options={FRENTE_COLORS} value={el.frenteColor} custom={el.frenteColorCustom} onChange={({ color, custom }) => set(color != null ? { frenteColor: color } : { frenteColorCustom: custom })} />}
+              </MatRow>
+              <MatRow label="Vinil del frente" off={!hasFrente(el) || !el.rotId}>
+                <Select id={k('rot')} aria-label="Vinil del frente" disabled={!hasFrente(el)} value={hasFrente(el) ? el.rotId ?? '' : ''} onChange={(e) => set({ rotId: e.target.value || null })}>
+                  <option value="">No aplica</option>
                   <option value="vin-corte-tras">Vinil de corte traslúcido</option>
                   <option value="vin-impreso-trans">Vinil impreso transparente</option>
                   {el.rotId && !['vin-corte-tras', 'vin-impreso-trans'].includes(el.rotId) && <option value={el.rotId}>Otro vinil (capturado antes)</option>}
                 </Select>
-                {el.rotId && <NumberInput id={k('cov')} aria-label="Cobertura" unit="%" step="5" value={el.rotCoverage} onChange={(v) => set({ rotCoverage: v })} />}
-              </div>
-            </Field>}
+                {hasFrente(el) && el.rotId && <NumberInput id={k('cov')} aria-label="Cobertura del vinil" unit="% cara" step="5" value={el.rotCoverage} onChange={(v) => set({ rotCoverage: v })} />}
+              </MatRow>
+              <MatRow label={'Silvatrim / cercha 1"'} off={!el.silvatrim} note={el.silvatrim ? `${num(g.silva, 2)} m.l.` : null}>
+                <Select id={k('sv')} aria-label="Silvatrim" value={el.silvatrim ? el.silvatrimColor : ''} onChange={(e) => set(e.target.value ? { silvatrim: true, silvatrimColor: e.target.value } : { silvatrim: false })}>
+                  <option value="">No aplica</option>
+                  {SILVA_COLORS.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </Select>
+                {el.silvatrim && el.measureMode === 'svg' && el.svg?.ok && <Check id={k('svin')} label="También en calados" checked={el.silvaInner !== false} onChange={(v) => set({ silvaInner: v })} />}
+              </MatRow>
+            </div>
           </div>
           <ElementImage id={k('img')} image={el.image} onChange={(image) => set({ image })} />
         </div>
@@ -316,7 +353,7 @@ export default function F1Form({ p, set, catalog, fid }) {
       <Section title={`Elementos del anuncio (${elements.length})`}>
         <div className="flex flex-col gap-3">
           {elements.map((el, i) => (
-            <ElementCard key={el.id} el={el} index={i} rules={rules} fid={fid} canRemove={elements.length > 1} onChange={(x) => setEl(i, x)} onRemove={() => set({ elements: elements.filter((_, k) => k !== i) })} />
+            <ElementCard key={el.id} el={el} index={i} rules={rules} catalog={catalog} p={p} fid={fid} canRemove={elements.length > 1} onChange={(x) => setEl(i, x)} onRemove={() => set({ elements: elements.filter((_, k) => k !== i) })} />
           ))}
           <div className="flex flex-wrap gap-2">
             <Button size="sm" icon={Plus} onClick={() => addEl('letras', 'Letras 3D')}>Letras 3D</Button>
@@ -358,11 +395,7 @@ export default function F1Form({ p, set, catalog, fid }) {
             </tbody>
           </table>
         </div>
-        <div className="mt-3 max-w-sm">
-          <Field label="Material de base / fondo posterior" htmlFor={fid('base')} hint="Cada elemento puede marcar “No aplica” por separado">
-            <ItemSelect id={fid('base')} catalog={catalog} categories={['Rígidos']} noneLabel="No aplica (ningún elemento lleva base)" value={p.baseId === 'none' ? '' : p.baseId} onChange={(v) => set({ baseId: v ?? 'none' })} />
-          </Field>
-        </div>
+
       </Section>
 
       <Section title="Módulos LED y fuentes de poder">

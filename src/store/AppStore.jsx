@@ -21,6 +21,7 @@ function freshData(clock) {
     orders: s.orders,
     counters: { quote: s.nextQuote, order: s.nextOrder },
     movements: [],
+    purchases: {},
     settings: { ...DEFAULT_SETTINGS },
   };
 }
@@ -87,7 +88,7 @@ function migrate(saved) {
       history: (o.history || []).map((h) => (h.phase === 'ventas' ? { ...h, phase: 'sin_liberar' } : h)),
     };
   });
-  return { ...saved, catalog: { items, rules }, quotes, clients, orders, settings: { ...DEFAULT_SETTINGS, ...(saved.settings || {}) } };
+  return { ...saved, purchases: saved.purchases ?? {}, catalog: { items, rules }, quotes, clients, orders, settings: { ...DEFAULT_SETTINGS, ...(saved.settings || {}) } };
 }
 
 function init() {
@@ -193,6 +194,27 @@ function reducer(s, a) {
         movements: [{ id: uid('mv'), at: nowOf(s), itemId: it.id, name: it.name, unit: it.unit, qty: a.qty, ref: a.note || 'Entrada de material', by: s.currentUserId }, ...s.movements].slice(0, 300),
         toasts: toast(s, `Entrada registrada: ${it.name}`),
       };
+    }
+    // ── Compras: palomear un material de una OT lo saca de pendientes y entra al almacén ──
+    case 'PURCHASE_SET': {
+      const now = nowOf(s);
+      const purchases = { ...s.purchases };
+      let items = s.catalog.items;
+      const moves = [];
+      for (const r of a.rows) {
+        const had = purchases[r.key];
+        if (a.bought === !!had) continue;
+        const qty = a.bought ? r.qty : had.qty;
+        if (a.bought) purchases[r.key] = { qty, at: now, by: s.currentUserId, supplier: a.supplier || '' };
+        else delete purchases[r.key];
+        const it = items.find((i) => i.id === r.itemId);
+        if (it && it.stock != null) {
+          const d = a.bought ? qty : -qty;
+          items = replace(items, it.id, (x) => ({ ...x, stock: Math.round((x.stock + d) * 1000) / 1000 }));
+          moves.push({ id: uid('mv'), at: now, itemId: it.id, name: it.name, unit: it.unit, qty: d, ref: `${a.bought ? 'Compra' : 'Compra cancelada'} · ${r.orderId}`, by: s.currentUserId });
+        }
+      }
+      return { ...s, purchases, catalog: { ...s.catalog, items }, movements: [...moves, ...s.movements].slice(0, 300) };
     }
     case 'RULES_SET':
       return { ...s, catalog: { ...s.catalog, rules: setIn(s.catalog.rules, a.path, a.value) } };
@@ -350,7 +372,7 @@ export function AppProvider({ children }) {
   useEffect(() => {
     const t = setTimeout(() => setStorage(saveState(state)), 400);
     return () => clearTimeout(t);
-  }, [state.users, state.clients, state.catalog, state.quotes, state.orders, state.counters, state.movements, state.settings]);
+  }, [state.users, state.clients, state.catalog, state.quotes, state.orders, state.counters, state.movements, state.settings, state.purchases]);
 
   const value = useMemo(() => {
     const me = state.users.find((u) => u.id === state.currentUserId);

@@ -25,7 +25,8 @@ export function newElement(patch = {}) {
     qty: 1,
     text: '',
     letterCount: 6,
-    cantoSize: '4',
+    baseId: 'rig-acm3', // 'none' = no aplica
+    cantoSize: '4', // 'none' = no aplica
     cantoColor: 'Negro',
     cantoColorCustom: '',
     frenteMat: 'acrilico',
@@ -143,7 +144,9 @@ export function migrateF1Params(p, rules) {
 }
 
 /** ¿El elemento lleva base/fondo posterior y frente? "No aplica" los excluye del material. */
-export const hasBase = (p, el) => p.baseId !== 'none' && el.base !== 'none';
+export const baseIdOf = (p, el) => el.baseId ?? (el.base === 'none' || p.baseId === 'none' ? 'none' : p.baseId || 'rig-acm3');
+export const hasBase = (p, el) => baseIdOf(p, el) !== 'none';
+export const hasCanto = (el) => el.cantoSize !== 'none';
 export const hasFrente = (el) => el.frenteMat !== 'none';
 
 export const colorOf = (base, custom) => (base === 'Color especial' && custom ? `especial: ${custom}` : base);
@@ -175,10 +178,10 @@ export default {
 
     for (const { el, g } of T.per) {
       const label = el.name || F1_MODALITIES.find((m) => m.id === el.modality)?.short;
+      // Cada material puede ser "No aplica": no entra a la lista de materiales ni al precio
       const size = R.cantoSizes.find((c) => c.id === el.cantoSize) ?? R.cantoSizes[R.cantoSizes.length - 1];
-      put(ctx.pick(size.itemId, 'Perfiles y Canales', (i) => /canto/i.test(i.name)), g.edge, `Canto ${size.name}`, `${label}: ${colorOf(el.cantoColor, el.cantoColorCustom).toLowerCase()}`);
-      // Base / fondo y frente pueden ser "No aplica" (p. ej. letras de luz indirecta sin fondo): no se cobra el material
-      if (hasBase(p, el)) put(ctx.pick(p.baseId, 'Rígidos'), g.face, 'Base posterior', label);
+      if (hasCanto(el)) put(ctx.pick(size.itemId, 'Perfiles y Canales', (i) => /canto/i.test(i.name)), g.edge, `Canto ${size.name}`, `${label}: ${colorOf(el.cantoColor, el.cantoColorCustom).toLowerCase()}`);
+      if (hasBase(p, el)) put(ctx.pick(baseIdOf(p, el), 'Rígidos'), g.face, 'Base posterior', label);
       const fm = R.frenteMaterials.find((f) => f.id === el.frenteMat) ?? R.frenteMaterials[0];
       if (hasFrente(el)) put(ctx.pick(fm.itemId, 'Rígidos'), g.face, 'Frente', `${label}: ${colorOf(el.frenteColor, el.frenteColorCustom).toLowerCase()}`);
       if (el.silvatrim) put(ctx.pick('per-silva', 'Perfiles y Canales', (i) => /silva|cercha/i.test(i.name)), g.silva, 'Silvatrim / cercha 1"', `${label}: ${String(el.silvatrimColor).toLowerCase()}`);
@@ -216,9 +219,10 @@ export default {
           `${num(g.W)} × ${num(g.H)} m${g.q > 1 ? ` × ${g.q}` : ''}`,
           g.fromSvg ? `medido de ${el.svg.name} (${g.pieces} piezas, ${g.holes} calados)` : null,
           F1_LIGHTS.find((l) => l.id === el.light)?.name.toLowerCase(),
-          `canto ${size} ${colorOf(el.cantoColor, el.cantoColorCustom).toLowerCase()}`,
+          hasCanto(el) ? `canto ${size} ${colorOf(el.cantoColor, el.cantoColorCustom).toLowerCase()}` : 'sin canto',
           hasFrente(el) ? `frente ${fm?.toLowerCase()} ${colorOf(el.frenteColor, el.frenteColorCustom).toLowerCase()}` : 'sin frente',
-          hasBase(p, el) ? null : 'sin base / fondo',
+          hasBase(p, el) ? `base ${String(ctx.pick(baseIdOf(p, el), 'Rígidos')?.name ?? '').toLowerCase()}` : 'sin base / fondo',
+          hasFrente(el) && !(el.rotId && n(el.rotCoverage) > 0) ? 'sin vinil' : null,
           el.silvatrim ? `silvatrim ${String(el.silvatrimColor).toLowerCase()}` : 'sin silvatrim',
         ]
           .filter(Boolean)

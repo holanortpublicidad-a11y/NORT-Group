@@ -6,6 +6,7 @@ import {
   Kanban,
   LayoutDashboard,
   Package,
+  ShoppingCart,
   Menu,
   Monitor,
   Moon,
@@ -26,13 +27,14 @@ const ICONS = {
   orders: Kanban,
   clients: Building2,
   sellers: BadgePercent,
+  purchases: ShoppingCart,
   catalog: Package,
   users: ShieldCheck,
 };
-const SHORT = { dashboard: 'Panel', quotes: 'Cotizar', orders: 'OTs', clients: 'Clientes', sellers: 'Vendedores', catalog: 'Inventario', users: 'Usuarios' };
+const SHORT = { dashboard: 'Panel', quotes: 'Cotizar', orders: 'OTs', clients: 'Clientes', sellers: 'Vendedores', purchases: 'Compras', catalog: 'Inventario', users: 'Usuarios' };
 
 // Qué módulo resalta cada ruta
-const ROUTE_MODULE = { quote: 'quotes', dashboard: 'dashboard', quotes: 'quotes', orders: 'orders', clients: 'clients', sellers: 'sellers', catalog: 'catalog', users: 'users' };
+const ROUTE_MODULE = { quote: 'quotes', dashboard: 'dashboard', quotes: 'quotes', orders: 'orders', clients: 'clients', sellers: 'sellers', catalog: 'catalog', purchases: 'purchases', users: 'users' };
 
 function useTheme() {
   const [mode, setMode] = useState(() => document.documentElement.getAttribute('data-theme') || 'system');

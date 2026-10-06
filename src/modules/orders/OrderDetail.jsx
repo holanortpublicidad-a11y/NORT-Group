@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { ArrowLeft, ArrowRight, Rocket, Check, ClipboardList, Copy, ExternalLink, FileText, MapPin, MessageCircle, Phone, Send } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Rocket, Check, ClipboardList, Copy, ExternalLink, FileText, MapPin, MessageCircle, Phone, Send, Wrench } from 'lucide-react';
 import { useApp } from '../../store/AppStore.jsx';
-import { Avatar, Badge, Button, Field, Input, Select, Sheet, SlaBar, SlaPill, copyText, cx } from '../../components/ui.jsx';
+import { Avatar, Badge, Button, Field, Input, Segmented, Select, Sheet, SlaBar, SlaPill, copyText, cx } from '../../components/ui.jsx';
 import { PHASES, computeSla, phaseIndex, phaseName } from '../../lib/sla.js';
 import { fmtDate, fmtDateTime, fromInputDate, mxn, num, toInputDate } from '../../lib/format.js';
 import { canMovePhase, canSeeCosts, roleName } from '../../lib/permissions.js';
@@ -9,6 +9,8 @@ import Attachments from '../../components/Attachments.jsx';
 import OrderSheet, { orderAsText } from './OrderSheet.jsx';
 import ReleasePanel, { releaseLocks } from './ReleasePanel.jsx';
 import BillingPanel from './BillingPanel.jsx';
+import InstallOrder from './InstallOrder.jsx';
+import { INSTALL_STATUS, mapsLink } from '../../lib/install.js';
 import { unitLabel } from '../../data/inventory.js';
 import { TEAMS } from '../../data/mockData.js';
 
@@ -58,6 +60,7 @@ export default function OrderDetail({ id, onClose }) {
   const { state, dispatch, role, now, nav, clientById, userById, notify } = useApp();
   const [note, setNote] = useState('');
   const [sheet, setSheet] = useState(false);
+  const [tab, setTab] = useState(role === 'instalador' ? 'install' : 'fab');
   const order = state.orders.find((o) => o.id === id);
   if (!order) return null;
 
@@ -78,7 +81,8 @@ export default function OrderDetail({ id, onClose }) {
   };
   const designers = state.users.filter((u) => u.role === 'diseno');
   const installers = state.users.filter((u) => u.role === 'instalador');
-  const maps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.installAddress)}`;
+  const maps = mapsLink(order);
+  const instStatus = INSTALL_STATUS.find((x) => x.id === (order.installation?.status ?? 'pendiente'));
 
   return (
     <Sheet
@@ -152,6 +156,20 @@ export default function OrderDetail({ id, onClose }) {
         </ol>
       </div>
 
+      <div className="scroll-x no-scrollbar border-b border-line px-5 py-2.5">
+        <Segmented
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'fab', label: 'Orden de fabricación' },
+            { value: 'install', label: `Orden de instalación · ${instStatus.name}` },
+          ]}
+        />
+      </div>
+
+      {tab === 'install' && <InstallOrder order={order} />}
+      {tab === 'fab' && (
+        <>
       {order.phase === 'sin_liberar' && <ReleasePanel order={order} />}
       {['admin', 'ventas', 'contabilidad'].includes(role) && <BillingPanel order={order} />}
 
@@ -310,6 +328,9 @@ export default function OrderDetail({ id, onClose }) {
           <a href={maps} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line px-2.5 text-[13px] hover:bg-surface-2">
             <ExternalLink size={14} /> Abrir en Google Maps
           </a>
+          <Button size="sm" icon={Wrench} onClick={() => setTab('install')}>
+            Orden de instalación
+          </Button>
           <Button size="sm" icon={FileText} onClick={() => nav({ name: 'quote', id: order.quoteId })}>
             Ver cotización {order.quoteId}
           </Button>
@@ -350,6 +371,8 @@ export default function OrderDetail({ id, onClose }) {
           <Button type="submit" icon={Send} aria-label="Agregar nota" />
         </form>
       </Section>
+        </>
+      )}
       {sheet && <OrderSheet order={order} onClose={() => setSheet(false)} />}
     </Sheet>
   );
